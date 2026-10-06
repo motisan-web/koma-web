@@ -4,8 +4,12 @@
 80分を1コマとした作業単位でタスクを計測・記録するWebタイマーツール。
 1日6コマ（8時間）を管理し、統計・hook通知・マークダウン出力ができる。
 
+## プロジェクト ID
+- project id: `koma-web`
+- プロジェクトラベル: `koma-web`（コマの project_id は `#project/koma-web`）
+
 ## 環境
-- **PHP 8.2** / XAMPP（仮想ホスト `mp-koma-timer.local`）、本番: Xserver（`main` への push で FTP デプロイ）
+- **PHP 8.2** / XAMPP（仮想ホスト `koma-web.local`）、本番: Xserver（`main` への push で FTP デプロイ）
 - **SQL不使用** — JSONファイルで全データ管理
 - **ユーザー**: motiハードコード（多ユーザー対応設計済み、実装は未）
 - **iframe対応**: embed.php でヘッダーなし埋め込み可能

@@ -1,7 +1,8 @@
 # 運用・デプロイ
 
 ## 環境
-- ローカル: XAMPP の仮想ホスト `mp-koma-timer.local`
+- ローカル: XAMPP の仮想ホスト `koma-web.local`（`C:/xampp/htdocs/github/koma-web.local`）
+- GitHub: `motisan-web/koma-web`（旧 `mp-koma-timer`。GitHub の転送があるので旧 URL でも届く）
 - 本番: Xserver（`9jf2.motisan.info`）。`main` への push で GitHub Actions（FTP-Deploy-Action）がデプロイする。
   FTP の認証情報は GitHub Secrets（`STAGING_SERVER` / `STAGING_USERNAME` / `STAGING_PASSWORD`）。
 - `logs/error.log`: JSON Lines 形式でエラーを記録する。
