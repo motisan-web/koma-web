@@ -110,27 +110,32 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .cal__cell[data-lv="5"] { background: var(--cal5); }
 .cal__cell.is-future { background: transparent; }
 .cal__cell.is-today { outline: 2px solid var(--text); outline-offset: -1px; }
-.cal__cell.is-unlock::after {
-    content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--unlock);
-    box-shadow: 0 0 0 1px var(--panel-solid);
-}
 .cal__legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 10px; font-size: 11px; color: var(--muted); }
 .cal__legend i { display: inline-block; width: 12px; height: 12px; border-radius: var(--cell-radius); vertical-align: -2px; margin-right: 4px; position: relative; }
-.cal__legend i.unlock { background: var(--cal0); }
-.cal__legend i.unlock::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--unlock); }
 
 /* ---- 履歴 ---- */
-.history__toggle { all: unset; cursor: pointer; display: flex; width: 100%; align-items: baseline; gap: 10px; }
+.fold__toggle { all: unset; cursor: pointer; display: flex; width: 100%; align-items: baseline; gap: 10px; }
+.fold.is-closed .fold__body { display: none; }
+.fold.is-closed .panel__title { margin-bottom: 0; }
 .history table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
 .history th { text-align: left; font-size: 11px; font-weight: 500; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
 .history td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
 .history tr:last-child td { border-bottom: 0; }
 .history td.date, .history td.min { font-family: var(--font-num); white-space: nowrap; }
 .history td.proj { color: var(--muted); font-size: 12px; }
-.history td.min { text-align: right; }
+.history td.min, .history td.act { text-align: right; }
 .history .btn { padding: 3px 10px; font-size: 12px; }
-.history.is-closed table { display: none; }
 @media (max-width: 600px) { .history td.proj, .history th.proj { display: none; } }
+
+/* ---- 実績の進捗 ---- */
+.prog { display: grid; gap: 12px; }
+.prog__row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; }
+.prog__ico { grid-row: span 2; width: 30px; height: 30px; }
+.prog__ico svg { width: 100%; height: 100%; }
+.prog__text { font-size: 13px; }
+.prog__text b { font-family: var(--font-num); color: var(--accent); font-size: 15px; margin: 0 2px; }
+.prog__meta { font-size: 11px; color: var(--muted); text-align: right; white-space: nowrap; }
+.prog__row .meter__bar { grid-column: 2 / 4; height: 6px; }
 
 /* ---- 実績（サイドバー） ---- */
 .ach-group { margin-bottom: 14px; }
@@ -209,14 +214,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
     --accent: #e9824f; --on-accent: #fff; --good: #3f8a30; --good-soft: #e3f1da; --bad: #d4502b;
     --track: #e6eddc; --fill: linear-gradient(90deg, #8dcc6c, #4f9e3c);
     --btn-bg: #4f9e3c; --btn-text: #fff;
-    --running-border: 1px solid #e9824f; --running-shadow: 0 0 0 3px #fbe4d7;
-    --cal0: #e9eee1; --cal1: #cfe6bd; --cal2: #9fd17f; --cal3: #5fae45; --cal4: #3b852b; --cal5: #e9824f; --unlock: #ffc93c;
+    --running-border: 1px solid #f3cdb8; --running-shadow: none;
+    --cal0: #e9eee1; --cal1: #cfe6bd; --cal2: #9fd17f; --cal3: #5fae45; --cal4: #3b852b; --cal5: #e9824f;
     --tip-bg: #2f3a29; --tip-text: #f4f8ee;
 }
 
 /* =========================================================
    スキン2: 工房 — 紙と木と真鍮。コマで道具と工房が増えていく
    ========================================================= */
+[data-skin="grow"] .state--run { background: #fbebe2; color: #c8673d; }
+[data-skin="grow"] .koma.is-running { background: #fffaf6; }
+
 [data-skin="workshop"] {
     --font: "Zen Kaku Gothic New", system-ui, sans-serif; --font-title: "Shippori Mincho", serif; --font-num: "IBM Plex Mono", monospace;
     --bg: #ebe3d3; --text: #3a2e22; --muted: #85735e; --title: #6b3f1d; --title-spacing: .08em;
@@ -227,7 +235,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     --track: #e4d8c0; --fill: repeating-linear-gradient(90deg, #b5652b 0 10px, #9c5422 10px 12px);
     --btn-bg: #3a2e22; --btn-text: #f8f3e8;
     --running-border: 1px solid #b5652b; --running-shadow: 3px 3px 0 #b5652b;
-    --cal0: #e7dcc6; --cal1: #e2c69c; --cal2: #d29a5c; --cal3: #b5652b; --cal4: #7f3f16; --cal5: #3a2e22; --unlock: #f2c94c;
+    --cal0: #e7dcc6; --cal1: #e2c69c; --cal2: #d29a5c; --cal3: #b5652b; --cal4: #7f3f16; --cal5: #3a2e22;
     --tip-bg: #3a2e22; --tip-text: #f8f3e8;
     background-image: radial-gradient(rgba(107,63,29,.06) 1px, transparent 1px); background-size: 6px 6px;
 }
@@ -247,7 +255,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     --track: #1a2342; --fill: linear-gradient(90deg, #4f7bff, #5ee0b5);
     --btn-bg: #4f7bff; --btn-text: #fff;
     --running-border: 1px solid #ffb547; --running-shadow: 0 0 18px rgba(255,181,71,.35);
-    --cal0: #161e3a; --cal1: #1f3570; --cal2: #2f55b8; --cal3: #4f7bff; --cal4: #5ee0b5; --cal5: #ffb547; --unlock: #fff;
+    --cal0: #161e3a; --cal1: #1f3570; --cal2: #2f55b8; --cal3: #4f7bff; --cal4: #5ee0b5; --cal5: #ffb547;
     --tip-bg: #e6ecff; --tip-text: #0b1020;
     background-image: radial-gradient(1px 1px at 20% 30%, #fff8 50%, transparent), radial-gradient(1px 1px at 70% 80%, #fff6 50%, transparent), radial-gradient(1.5px 1.5px at 40% 60%, #fff5 50%, transparent);
     background-size: 220px 220px, 310px 310px, 470px 470px;
@@ -296,9 +304,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
                 <div class="komas" id="komas"></div>
             </section>
 
-            <!-- カレンダー -->
+            <!-- 実績の進捗 -->
             <section class="panel">
-                <h2 class="panel__title">カレンダー<span class="sub">直近26週・日曜始まり</span></h2>
+                <h2 class="panel__title">実績の進捗<span class="sub">獲得に近い順</span></h2>
+                <div class="prog" id="progress"></div>
+            </section>
+
+            <!-- カレンダー -->
+            <section class="panel fold is-closed">
+                <button class="fold__toggle panel__title" aria-expanded="false">カレンダー<span class="sub">直近26週・日曜始まり</span><span class="right fold__icon">▼</span></button>
+                <div class="fold__body">
                 <div class="cal"><div class="cal__inner">
                     <div class="cal__months" id="cal-months"></div>
                     <div class="cal__days"><span></span><span>月</span><span></span><span>水</span><span></span><span>金</span><span></span></div>
@@ -311,14 +326,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
                     <span><i style="background:var(--cal3)"></i>6+ フルデイ</span>
                     <span><i style="background:var(--cal4)"></i>8+ オーバードライブ</span>
                     <span><i style="background:var(--cal5)"></i>10+</span>
-                    <span><i class="unlock"></i>実績を解禁した日</span>
+                </div>
                 </div>
             </section>
 
             <!-- 履歴 -->
-            <section class="panel history" id="history">
-                <button class="history__toggle panel__title" id="history-toggle" aria-expanded="true">履歴<span class="sub">過去14日の完了コマ</span><span class="right" id="history-icon">▲</span></button>
-                <table>
+            <section class="panel history fold">
+                <button class="fold__toggle panel__title" aria-expanded="true">履歴<span class="sub">過去14日の完了コマ</span><span class="right fold__icon">▲</span></button>
+                <table class="fold__body">
                     <thead><tr><th>日付</th><th>コマ</th><th>作業内容</th><th class="proj">プロジェクト</th><th style="text-align:right">時間</th><th></th></tr></thead>
                     <tbody id="history-body"></tbody>
                 </table>
@@ -528,19 +543,13 @@ document.getElementById('komas').innerHTML = KOMAS.map((k, i) => `
 
 // カレンダー（色の段階はその日の実績の段階にそろえる）
 const lvOf = v => v <= 0 ? 0 : v < 3 ? 1 : v < 6 ? 2 : v < 8 ? 3 : v < 10 ? 4 : 5;
-let run = BASE_TOTAL;
 const cells = [], monthLabels = [];
 days.forEach((d, i) => {
-    const before = run; run += d.v;
-    const unlocks = [];
-    TODAY_TIERS.forEach(t => { if (d.v >= t.min && days.slice(0, i).every(p => p.v < t.min)) unlocks.push(`${t.name} 初獲得`); });
-    if (Math.floor(run / 100) > Math.floor(before / 100)) unlocks.push(`累計 ${Math.floor(run / 100) * 100} コマ`);
     const got = TODAY_TIERS.filter(t => d.v >= t.min).map(t => t.name);
     const isToday = i === days.length - 1;
     tipStore.push(`<b>${md(d.date)}（${fmt1(d.v)}コマ）</b>${isToday ? ' <span class="t-dim">今日</span>' : ''}`
-        + (got.length ? `<br>${got.join('・')}` : '')
-        + (unlocks.length ? `<div class="t-next">解禁: ${unlocks.join('、')}</div>` : ''));
-    cells.push(`<div class="cal__cell${isToday ? ' is-today' : ''}${unlocks.length ? ' is-unlock' : ''}" data-lv="${lvOf(d.v)}" data-tip="${tipStore.length - 1}"></div>`);
+        + (got.length ? `<br>${got.join('・')}` : ''));
+    cells.push(`<div class="cal__cell${isToday ? ' is-today' : ''}" data-lv="${lvOf(d.v)}" data-tip="${tipStore.length - 1}"></div>`);
     if (d.date.getDay() === 0) monthLabels.push(d.date.getDate() <= 7 ? `${d.date.getMonth() + 1}月` : '');
 });
 for (let i = today.getDay() + 1; i < 7; i++) cells.push('<div class="cal__cell is-future"></div>');
@@ -557,13 +566,34 @@ const HISTORY = [
 ];
 document.getElementById('history-body').innerHTML = HISTORY.map(([back, slot, name, proj, min]) => `
     <tr><td class="date">${md(new Date(today.getTime() - back * DAY))}</td><td>コマ${slot}</td><td>${esc(name)}</td>
-    <td class="proj">#project/${esc(proj)}</td><td class="min">${min}分</td><td><button class="btn btn--sub">コピー</button></td></tr>`).join('');
-const hist = document.getElementById('history');
-document.getElementById('history-toggle').addEventListener('click', e => {
-    const closed = hist.classList.toggle('is-closed');
-    e.currentTarget.setAttribute('aria-expanded', String(!closed));
-    document.getElementById('history-icon').textContent = closed ? '▼' : '▲';
-});
+    <td class="proj">#project/${esc(proj)}</td><td class="min">${min}分</td><td class="act"><button class="btn btn--sub">コピー</button></td></tr>`).join('');
+// 折りたたみ（カレンダー・履歴）
+document.querySelectorAll('.fold__toggle').forEach(btn => btn.addEventListener('click', () => {
+    const closed = btn.closest('.fold').classList.toggle('is-closed');
+    btn.setAttribute('aria-expanded', String(!closed));
+    btn.querySelector('.fold__icon').textContent = closed ? '▼' : '▲';
+}));
+
+// 実績の進捗（次に取れる実績を、進捗率の高い順に並べる）
+const proj50 = visibleProjects.map(p => ({ shape: 'gem', c: ['#a5d6a7', '#2e7d32'], icon: '🛠', name: `${p.id} 職人`, done: p.koma % 50, goal: 50, unit: 'コマ', due: '' }));
+const hours = total * 80 / 60;
+const PROGRESS = [
+    nextTodayTier && { shape: 'sun', c: nextTodayTier.c, icon: nextTodayTier.icon, name: nextTodayTier.name, done: todayKoma, goal: nextTodayTier.min, unit: 'コマ', due: '今日 0:00 まで' },
+    { shape: 'shield', c: ['#6bc5ff', '#1f5f8f'], icon: '📅', name: 'ウィークリー30', done: weekKoma, goal: 30, unit: 'コマ', due: '土曜 24:00 まで' },
+    { shape: 'shield', c: ['#b28dff', '#4b2a8f'], icon: '🌙', name: 'マンスリー120', done: 41.3, goal: 120, unit: 'コマ', due: '月末まで' },
+    { shape: 'gem', c: ['#80deea', '#00838f'], icon: '💎', name: `累計${Math.ceil(total / 100) * 100}コマ`, done: total % 100, goal: 100, unit: 'コマ', due: '' },
+    { shape: 'gem', c: ['#ffab91', '#bf360c'], icon: '⏱', name: `累計${(Math.floor(hours / 100) + 1) * 100}時間`, done: hours % 100, goal: 100, unit: '時間', due: '' },
+    ...proj50,
+    { shape: 'medal', c: ['#ff7043', '#8f1d00'], icon: '🔥', name: '30日連続', done: streak.cur, goal: 30, unit: '日', due: '' },
+    { shape: 'medal', c: ['#ffe082', '#a07800'], icon: '☀', name: 'フルデイ3連', done: fullStreak.cur, goal: 3, unit: '日', due: '今日 0:00 まで' },
+].filter(Boolean).map(x => ({ ...x, p: x.done / x.goal * 100 })).sort((a, b) => b.p - a.p);
+document.getElementById('progress').innerHTML = PROGRESS.map(x => `
+    <div class="prog__row">
+        <div class="prog__ico">${SHAPES[x.shape](x.c[0], x.c[1], x.icon)}</div>
+        <div class="prog__text">${esc(x.name)}獲得まで あと<b>${x.unit === '日' ? x.goal - x.done : fmt1(x.goal - x.done)}</b>${x.unit}</div>
+        <div class="prog__meta">${Math.floor(x.p)}%${x.due ? `・${x.due}` : ''}</div>
+        ${progressBar(x.p)}
+    </div>`).join('');
 
 // 実績
 document.getElementById('achievements').innerHTML = ACH.map(g => `
