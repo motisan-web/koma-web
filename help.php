@@ -75,11 +75,14 @@ $currentUser = get_koma_user();
     <div class="help-section">
         <h2>統計ページ</h2>
         <ul>
-            <li><strong>日別</strong>：指定日のコマ一覧とマークダウン出力</li>
-            <li><strong>週別</strong>：週ごとの日別内訳とサマリー</li>
-            <li><strong>月別</strong>：月ごとの日別内訳とサマリー</li>
-            <li><strong>プロジェクト別</strong>：過去90日のproject_id別累計時間</li>
+            <li><strong>日別</strong>：指定日のコマ一覧・事後編集・マークダウン出力</li>
+            <li><strong>期間</strong>：週・月ごとのコマ数（プロジェクト別の色分け）、前の期間と比べたペース、曜日ごとの平均</li>
+            <li><strong>プロジェクト</strong>：割合・週ごとの推移・プロジェクト一覧。名前を押すとそのプロジェクトだけの統計が見られます</li>
+            <li><strong>時間帯</strong>：曜日×時刻でいつ作業しているか、始業と終業の推移</li>
+            <li><strong>集中度</strong>：コマの長さの分布、一時停止の回数、80分前後で終えた割合</li>
+            <li><strong>記録</strong>：自己ベスト、1年のカレンダー、月ごとの推移</li>
         </ul>
+        <p>コマ数は「分数 ÷ 80」で数えます（完了したコマで20分を超え80分に届かないものは80分として数えます）。</p>
     </div>
 
     <div class="help-section">

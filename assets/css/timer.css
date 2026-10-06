@@ -37,6 +37,9 @@
     --cal0: #252d21; --cal1: #2f4a27; --cal2: #3f7a30; --cal3: #5fae45; --cal4: #8fd36f; --cal5: #f0956a;
     --tree-ground: #2a3326; --tree-trunk: #8a6446; --tree-leaf: #4f9e3c; --tree-leaf2: #438a33; --tree-leaf3: #63b34d; --tree-fruit: #f0956a;
     --tip-bg: #e4ebdc; --tip-text: #1f261c;
+    --seq0: #252d21; --seq1: #2f4a27; --seq2: #3f7a30; --seq3: #5fae45; --seq4: #8fd36f; --seq5: #c4ecaa;
+    --p1: #3987e5; --p2: #d95926; --p3: #199e70; --p4: #c98500; --p5: #d55181; --p-other: #5f6b57; --prev: #6b7862;
+    --chart-grid: #2a3326; --chart-axis: #3e4a38;
 
     --radius:       10px;
     --radius-sm:    6px;
@@ -73,6 +76,9 @@ html[data-theme="light"] {
     --cal0: #e9eee1; --cal1: #cfe6bd; --cal2: #9fd17f; --cal3: #5fae45; --cal4: #3b852b; --cal5: #e9824f;
     --tree-ground: #dfe8d0; --tree-trunk: #93653f; --tree-leaf: #6fb957; --tree-leaf2: #5fa948; --tree-leaf3: #86cc6c; --tree-fruit: #e9824f;
     --tip-bg: #2f3a29; --tip-text: #f4f8ee;
+    --seq0: #e9eee1; --seq1: #cfe6bd; --seq2: #9fd17f; --seq3: #5fae45; --seq4: #3b852b; --seq5: #24601a;
+    --p1: #2a78d6; --p2: #eb6834; --p3: #1baf7a; --p4: #eda100; --p5: #e87ba4; --p-other: #b5bdab; --prev: #b5bdab;
+    --chart-grid: #e9eee1; --chart-axis: #c9d3bd;
     --shadow:       0 2px 8px rgba(63,122,48,0.07);
 }
 
@@ -895,3 +901,103 @@ button.ach:hover, button.ach:focus-visible { outline: 2px solid var(--highlight)
     font-family: "Consolas", "Courier New", monospace;
     color: var(--text-muted);
 }
+
+/* ========================================
+   統計（#T-006）
+   ======================================== */
+.page-tabs { overflow-x: auto; overflow-y: hidden; }
+.page-tab { white-space: nowrap; }
+.page-tab.is-active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
+.stats-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.stats-range { font-size: 15px; }
+.stats-toolbar .btn-secondary:disabled { opacity: .4; cursor: default; }
+.stats-empty { font-size: 13px; color: var(--text-muted); }
+.seg { display: inline-flex; background: var(--bg-soft); border-radius: 8px; padding: 3px; }
+.seg button { border: 0; background: transparent; padding: 5px 14px; border-radius: 6px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--bg-card); color: var(--text); font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-bottom: 20px; }
+.grid2 > .panel { margin-bottom: 0; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.table-scroll { overflow-x: auto; }
+.data-table td.r, .data-table th.r { text-align: right; font-variant-numeric: tabular-nums; }
+.stats-details summary { cursor: pointer; font-size: 13px; color: var(--text-muted); margin-top: 12px; }
+.stats-details table { margin-top: 8px; }
+
+/* 数字のタイル */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); }
+.tile__label { font-size: 11px; color: var(--text-muted); }
+.tile__value { font-size: 26px; font-weight: 900; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.tile__value small { font-size: 13px; font-weight: 500; margin-left: 2px; color: var(--text-muted); }
+.tile__delta { font-size: 11px; color: var(--text-muted); }
+.tile__delta.up { color: var(--green); }
+.tile__delta.down { color: var(--red); }
+.tile__sub { font-size: 11px; color: var(--text-muted); }
+
+/* グラフ */
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart text { fill: var(--text-muted); font-size: 11px; font-family: inherit; }
+.chart .grid { stroke: var(--chart-grid); stroke-width: 1; }
+.chart .axis { stroke: var(--chart-axis); stroke-width: 1; }
+.chart .ref { stroke: var(--highlight); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.chart text.ref-label { fill: var(--highlight); font-weight: 700; }
+.chart .hit { fill: transparent; }
+.chart .hit:hover { fill: color-mix(in srgb, var(--text) 6%, transparent); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.legend i.line { height: 2px; border-radius: 1px; vertical-align: 3px; width: 14px; }
+.legend i.dash { height: 0; border-top: 2px dashed var(--prev); vertical-align: 3px; width: 14px; }
+.legend i.dot { border-radius: 50%; }
+.tip i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+.tip__row { display: flex; justify-content: space-between; gap: 14px; }
+
+/* 横棒の一覧 */
+.hbars { display: grid; gap: 8px; }
+.hbar { display: grid; grid-template-columns: 130px minmax(0, 1fr) 100px; gap: 10px; align-items: center; font-size: 13px; }
+.hbar__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar__name i, .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.hbar__track { height: 10px; background: var(--bg-input); border-radius: 4px; overflow: hidden; }
+.hbar__fill { height: 100%; border-radius: 4px; }
+.hbar__val { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 12px; }
+.hbar__val b { color: var(--text); font-size: 13px; }
+@media (max-width: 520px) { .hbar { grid-template-columns: 90px minmax(0, 1fr) 84px; } }
+
+/* 曜日×時刻のヒートマップ・1年のカレンダー（量は緑の単色ランプ） */
+.heat { display: grid; grid-template-columns: 24px repeat(24, minmax(0, 1fr)); gap: 3px; font-size: 10px; color: var(--text-muted); }
+.heat__cell { aspect-ratio: 1; border-radius: 3px; }
+.heat__day { line-height: 1; align-self: center; }
+.heat__hour { text-align: center; }
+.year { overflow-x: auto; }
+.year__grid { display: grid; grid-template-rows: repeat(7, 11px); grid-auto-flow: column; grid-auto-columns: 11px; gap: 3px; }
+.year__cell { border-radius: 2px; }
+.year__months { display: grid; grid-auto-flow: column; grid-auto-columns: 11px; gap: 3px; font-size: 10px; color: var(--text-muted); height: 14px; }
+.year__months span { white-space: nowrap; }
+.seq-legend { display: flex; gap: 4px; align-items: center; font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+.seq-legend i { width: 12px; height: 12px; border-radius: 3px; }
+:where(.heat__cell, .year__cell, .seq-legend i) { background: var(--seq0); }
+[data-q="1"] { background: var(--seq1); }
+[data-q="2"] { background: var(--seq2); }
+[data-q="3"] { background: var(--seq3); }
+[data-q="4"] { background: var(--seq4); }
+[data-q="5"] { background: var(--seq5); }
+
+/* 自己ベスト */
+.bests { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.best { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; display: grid; grid-template-columns: 36px 1fr; gap: 2px 10px; align-items: center; }
+.best__ico { grid-row: span 3; font-size: 26px; text-align: center; }
+.best__label { font-size: 11px; color: var(--text-muted); }
+.best__value { font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.best__when { font-size: 11px; color: var(--text-muted); }
+
+/* プロジェクトへのリンク・単体ページ */
+.plink { color: inherit; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
+.plink:hover { color: var(--accent); text-decoration-color: var(--accent); }
+.stats-back { display: inline-block; font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+.stats-back:hover { color: var(--accent); }
+.pd-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.pd-head h2 { font-size: 20px; }
+.pd-head h2 i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; margin-right: 8px; vertical-align: -1px; }
+.pd-head .sub { font-size: 12px; color: var(--text-muted); }
+.mini-meter { display: inline-block; width: 70px; height: 6px; background: var(--bg-input); border-radius: 3px; overflow: hidden; vertical-align: middle; margin-right: 6px; }
+.mini-meter span { display: block; height: 100%; background: var(--accent); }
+.table-scroll .data-table th, .table-scroll .data-table td { white-space: nowrap; }

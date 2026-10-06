@@ -119,3 +119,44 @@ function koma_streak(array $daily, string $today, float $minKoma): array {
     }
     return ['current' => $current, 'best' => max($best, $current)];
 }
+
+/**
+ * 統計画面（#T-006）に渡す全コマの一覧。JS が集計するので、1コマ1行の小さな形にする。
+ *   d: 日付 / s: スロット / p: project_id / n: 作業内容 / st: ステータス
+ *   m: 分数 / v: コマ数（koma_value） / a: 異常値なら1
+ *   seg: その日の0時からの分数で [開始, 終了] の一覧（一時停止の回数 = seg の数 - 1）
+ */
+function koma_stats_records(?int $now = null): array {
+    $now ??= time();
+    $tz  = new DateTimeZone('Asia/Tokyo');
+    $out = [];
+    foreach (glob(__DIR__ . '/../data/sessions/*/*/data.json') ?: [] as $file) {
+        if (!preg_match('#(\d{4})/(\d{2}-\d{2})/data\.json$#', str_replace('\\', '/', $file), $m)) continue;
+        $date = $m[1] . '-' . $m[2];
+        $midnight = (new DateTime($date, $tz))->getTimestamp();
+        foreach (load_session($date)['koma'] ?? [] as $k) {
+            $sec = koma_seconds($k, $now);
+            if ($sec <= 0) continue;
+            $segs = [];
+            foreach ($k['segments'] ?? [] as $seg) {
+                $s = strtotime($seg['start'] ?? '');
+                $e = isset($seg['end']) ? strtotime($seg['end']) : $now;
+                if ($s === false || $e === false || $e <= $s) continue;
+                $segs[] = [(int)round(($s - $midnight) / 60), (int)round(($e - $midnight) / 60)];
+            }
+            $out[] = [
+                'd'   => $date,
+                's'   => (int)$k['id'],
+                'p'   => trim((string)($k['project_id'] ?? '')),
+                'n'   => trim((string)($k['name'] ?? '')),
+                'st'  => $k['status'] ?? 'idle',
+                'm'   => round($sec / 60, 1),
+                'v'   => round(koma_value($k, $now), 3),
+                'a'   => koma_is_anomaly($k) ? 1 : 0,
+                'seg' => $segs,
+            ];
+        }
+    }
+    usort($out, fn($a, $b) => [$a['d'], $a['s']] <=> [$b['d'], $b['s']]);
+    return $out;
+}
