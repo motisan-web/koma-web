@@ -27,7 +27,7 @@
 - 前日コマエリアは JS で動的生成（PHP は `prevIncomplete` 配列を CFG に渡すだけ）。前日未完了コマの `total_seconds` は PHP で再計算して渡す。
 - 「リセット」ボタン（`btn-reset-{slot}`）は `completed` + `segments.length === 0` のときのみ表示。
 - 「100分に丸める」ボタン（`btn-round-{slot}`）は `done && elapsed > maxDurationSec` のときのみ表示。
-- 履歴エリアは過去14日・最大40件の完了コマを表示。「コピー」で先頭の idle スロットに転記。
+- 履歴エリアは過去14日・最大40件の完了コマを表示。「コピー」は、未開始かつ作業内容・プロジェクトが空（保存前の入力欄も含む）の先頭スロットに転記する。入力済みの未開始コマは上書きしない。
 
 ## テーマ
 - `data/config.json` の `theme` フィールドに保存（`"dark"` / `"light"`）。

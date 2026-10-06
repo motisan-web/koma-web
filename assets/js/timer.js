@@ -710,7 +710,11 @@ function bindEvents() {
 function findFirstIdleSlot() {
     for (let slot = 1; slot <= CFG.komaCount; slot++) {
         const k = komaState[slot];
-        if (!k || k.status === 'idle') return slot;
+        if (k && k.status !== 'idle') continue;
+        // 未開始でも作業内容・プロジェクトが入っていれば空きではない（保存前の入力欄も見る）
+        const name    = (k?.name ?? '') + (document.getElementById(`koma-name-${slot}`)?.value ?? '');
+        const project = (k?.project_id ?? '') + (document.getElementById(`koma-project-${slot}`)?.value ?? '');
+        if (name.trim() === '' && project.trim() === '') return slot;
     }
     return null;
 }
