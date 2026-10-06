@@ -885,3 +885,13 @@ button.ach:hover, button.ach:focus-visible { outline: 2px solid var(--highlight)
     .site-header__nav-link { white-space: nowrap; }
     .site-header__user { display: none; }
 }
+
+/* プロジェクトラベル（#T-008） */
+.pj-label {
+    margin-left: 16px;
+    padding: 1px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: "Consolas", "Courier New", monospace;
+    color: var(--text-muted);
+}

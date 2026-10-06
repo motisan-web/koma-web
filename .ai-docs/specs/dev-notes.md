@@ -55,6 +55,9 @@
 - カレンダーは折りたたみ（`.fold`、初期は閉じる）で、初めて開いたときに描く。履歴も同じ `.fold` の仕組みで開閉する。
 - ツールチップは `data-tip` 属性に入れた HTML を出す（`initTooltip()`）。innerHTML で入るので、利用者の入力を入れるときは必ずエスケープする。
 
+## フッター
+- `includes/footer.php` にプロジェクトラベル `pj:koma-web` を出す（サイト側でどのプロジェクトに紐づくか一目でわかるようにするため）。プロジェクト ID を変えたらここも直す。埋め込み（embed.php）では出ない。
+
 ## テーマ
 - `data/config.json` の `theme` フィールドに保存（`"dark"` / `"light"`）。
 - `api/timer.php` の `set_theme` アクションで保存（slot バリデーション前に配置）。
