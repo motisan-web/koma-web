@@ -4,8 +4,8 @@
 80分を1コマとした作業単位でタスクを計測・記録するWebタイマーツール。
 1日6コマ（8時間）を管理し、統計・hook通知・マークダウン出力ができる。
 
-## 設計・環境
-- **PHP 8.2** / XAMPP (git7.local virtualhost)、本番: Xserver
+## 環境
+- **PHP 8.2** / XAMPP（仮想ホスト `mp-koma-timer.local`）、本番: Xserver（`main` への push で FTP デプロイ）
 - **SQL不使用** — JSONファイルで全データ管理
 - **ユーザー**: motiハードコード（多ユーザー対応設計済み、実装は未）
 - **iframe対応**: embed.php でヘッダーなし埋め込み可能
@@ -22,7 +22,8 @@
 ├── api/
 │   ├── timer.php     # タイマー操作API（start/pause/complete/update_meta等）
 │   ├── hook.php      # Hook発火処理（cURL dispatch）
-│   └── output.php    # マークダウン出力API
+│   ├── output.php    # マークダウン出力API
+│   └── cron_check.php # cron 用。現状は100分超過で自動完了する（I-012）
 ├── includes/
 │   ├── header.php / footer.php
 │   ├── config.php    # 設定ローダー
@@ -41,50 +42,17 @@
 | event | タイミング |
 |---|---|
 | koma_start | コマ開始 |
-| koma_complete | コマ完了（手動・100分自動） |
+| koma_complete | コマ完了（手動） |
 | koma_80min | 80分経過 |
-| koma_100min | 100分経過（自動完了） |
+| koma_100min | 100分経過（hook 発火のみ。自動完了はしない） |
 | break_notify | 完了後10分（break_afterフラグがオンの場合） |
 
----
+## このプロジェクト固有の注意点
+- `data/`・`logs/`・ドキュメント類は `.htaccess` で HTTP から遮断している。公開範囲を変えるときは `.ai-docs/specs/operations.md` を読む。
+- コードを変える作業では、最初に `.ai-docs/specs/dev-notes.md` を読む。
 
-## ドキュメント管理ルール
-
-### ファイルの役割分担
-
-| ファイル | 役割 | 読むタイミング |
-|---|---|---|
-| `CLAUDE.md` | プロジェクトルール＋アクティブな todo/issue のみ | 毎チャット必読 |
-| `.claude-codex/CURRENT.md` | 直近の完了内容・次にやること・注意事項 | 毎チャット必読 |
-| `.claude-codex/change/*.md` | 完了した作業の詳細ログ | 必要なときだけ |
-
-### todo のルール
-- `[ ]` のみここに記載する
-- `[x]` にしたら**その行を削除**する（記録は change/ の変更ログが担う）
-
-### issue のルール
-- バグ・不具合・改善点が見つかったら、**まずここに `[ ]` で登録してから対処**する
-- 対処完了後は `[x]` にしてから**その行を削除**する
-
-### feat のルール
-- 新機能・改善要望は `## feat` セクションに `[ ] #F-XXX` 形式で登録する
-- 対処完了後は行を削除し、変更ログに記録する
-
-### 変更ログのルール（**必須**）
-- **issue / feat / todo を消化するたびに必ず** `.claude-codex/change/作業内容.md` に記録する
-- 記録せずに完了とみなさない。複数のissueをまとめて1ファイルにまとめてよい
-- ファイル名は `YYYY-MM-DD_作業内容.md` 形式でもよい
-- 記載内容: 変更ファイル・変更理由・変更内容の概要（コードスニペット不要、動作の説明を優先）
-
-### セッション引き継ぎのルール
-- チャット終了時に `.claude-codex/CURRENT.md` を最新状態に更新する
-- 新チャット開始時は **CLAUDE.md → CURRENT.md** の順に読めば文脈が揃う状態を保つ
-
----
-
-## issue
-
-## feat
-
-## todo
-- [ ] #T-001 Xserverデプロイ後にcronジョブを設定する（`/api/cron_check.php` を2〜5分ごとに実行）
+## ドキュメント
+- 状態と仕様は `.ai-docs/` にある。入口は `.ai-docs/CURRENT.md`、仕様の地図は `.ai-docs/index.md`。
+- 運用ルールは `~/.claude/project-docs/RULES.md`（Claude Code ではセッション開始時に自動で読み込まれる）。
+- 実装エージェントとして委譲された場合は、指示された `.ai-docs/tasks/<ID>.md` に従う。
+  書き込んでよいのはコードと `.ai-docs/inbox/<ID>/` だけで、ほかの `.ai-docs/` のファイルは読むだけにする。

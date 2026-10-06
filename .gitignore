@@ -6,3 +6,4 @@ logs/
 config.local.php
 .ftp-deploy-sync-state.json
 .user.ini
+.ai-docs/logs/
