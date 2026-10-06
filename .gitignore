@@ -7,3 +7,5 @@ config.local.php
 .ftp-deploy-sync-state.json
 .user.ini
 .ai-docs/logs/
+data/auth.json
+data/php_sessions/

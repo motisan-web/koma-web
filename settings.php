@@ -1,6 +1,9 @@
 <?php
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/user.php';
+require_once __DIR__ . '/includes/hook.php';
+require_once __DIR__ . '/includes/auth.php';
+auth_require_page();
 
 $currentUser = get_koma_user();
 $config      = load_config();
@@ -39,46 +42,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     if ($_POST['action'] === 'test_hook') {
-        $event = $_POST['test_event'] ?? '';
+        $event   = $_POST['test_event'] ?? '';
         $hookCfg = $config['hooks'][$event] ?? null;
         if ($hookCfg && !empty($hookCfg['url'])) {
-            $ch = curl_init();
-            $url    = $hookCfg['url'];
-            $method = strtoupper($hookCfg['method'] ?? 'GET');
-            $payload = json_encode([
-                'event'     => $event,
-                'test'      => true,
-                'user_id'   => 'moti',
-                'timestamp' => (new DateTime('now', new DateTimeZone('Asia/Tokyo')))->format('c'),
-            ]);
-            if ($method === 'POST') {
-                curl_setopt_array($ch, [
-                    CURLOPT_URL            => $url,
-                    CURLOPT_POST           => true,
-                    CURLOPT_POSTFIELDS     => $payload,
-                    CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_TIMEOUT        => 5,
-                    CURLOPT_CONNECTTIMEOUT => 3,
-                ]);
-            } else {
-                $sep = str_contains($url, '?') ? '&' : '?';
-                curl_setopt_array($ch, [
-                    CURLOPT_URL            => $url . $sep . 'event=' . urlencode($event) . '&test=1',
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_TIMEOUT        => 5,
-                    CURLOPT_CONNECTTIMEOUT => 3,
-                ]);
-            }
-            $resp     = curl_exec($ch);
-            $code     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlErr  = curl_error($ch);
-            curl_close($ch);
+            // テスト送信は「有効」チェックの有無に関係なく送る
+            $testConfig = $config;
+            $testConfig['hooks'][$event]['enabled'] = true;
+            $res = dispatch_hook($event, ['test' => true], $testConfig);
             $testResult = [
-                'event'  => $event,
-                'code'   => $code,
-                'error'  => $curlErr,
-                'body'   => mb_substr((string)$resp, 0, 200),
+                'event' => $event,
+                'code'  => $res['code'],
+                'error' => $res['error'],
+                'body'  => mb_substr($res['body'], 0, 200),
             ];
         } else {
             $testResult = ['event' => $event, 'error' => 'URLが設定されていません'];

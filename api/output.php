@@ -6,6 +6,8 @@
 
 require_once __DIR__ . '/../includes/data.php';
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/auth.php';
+auth_require_api();
 
 header('Content-Type: application/json; charset=utf-8');
 

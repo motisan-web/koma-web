@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/user.php';
+require_once __DIR__ . '/includes/auth.php';
+auth_require_page();
 $config      = load_config();
 $currentUser = get_koma_user();
 ?>

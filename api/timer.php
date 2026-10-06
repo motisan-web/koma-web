@@ -9,6 +9,9 @@ require_once __DIR__ . '/../includes/data.php';
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/user.php';
 require_once __DIR__ . '/../includes/logger.php';
+require_once __DIR__ . '/../includes/hook.php';
+require_once __DIR__ . '/../includes/auth.php';
+auth_require_api();
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -66,25 +69,8 @@ function ensure_koma(array &$session, int $slot): int {
 }
 
 function fire_hook(string $event, array $payload = []): void {
-    $config  = load_config();
-    $hookCfg = $config['hooks'][$event] ?? null;
-    if (!$hookCfg || !$hookCfg['enabled'] || empty($hookCfg['url'])) return;
-
-    $hookApiUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
-        . '://' . $_SERVER['HTTP_HOST']
-        . dirname($_SERVER['SCRIPT_NAME']) . '/hook.php';
-
-    $ch = curl_init($hookApiUrl);
-    curl_setopt_array($ch, [
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => json_encode(['event' => $event, 'payload' => $payload]),
-        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 3,
-        CURLOPT_CONNECTTIMEOUT => 2,
-    ]);
-    curl_exec($ch);
-    curl_close($ch);
+    // タイマー操作の応答を待たせすぎないよう、短めのタイムアウトで直接送る
+    dispatch_hook($event, $payload, load_config(), 3, 2);
 }
 
 /**

@@ -11,51 +11,10 @@ require_once __DIR__ . '/../includes/data.php';
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/user.php';
 require_once __DIR__ . '/../includes/logger.php';
-
-// Hook dispatch (inline — hook.phpへの内部cURLを避けてシンプルに)
-function dispatch_hook(string $event, array $payload, array $config): void {
-    $hookCfg = $config['hooks'][$event] ?? null;
-    if (!$hookCfg || !$hookCfg['enabled'] || empty($hookCfg['url'])) return;
-
-    $url    = $hookCfg['url'];
-    $method = strtoupper($hookCfg['method'] ?? 'GET');
-    $fullPayload = array_merge($payload, [
-        'event'     => $event,
-        'timestamp' => (new DateTime('now', new DateTimeZone('Asia/Tokyo')))->format('c'),
-    ]);
-
-    $ch = curl_init();
-    if ($method === 'POST') {
-        $body = json_encode($fullPayload, JSON_UNESCAPED_UNICODE);
-        curl_setopt_array($ch, [
-            CURLOPT_URL            => $url,
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $body,
-            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 5,
-            CURLOPT_CONNECTTIMEOUT => 3,
-        ]);
-    } else {
-        $sep = str_contains($url, '?') ? '&' : '?';
-        curl_setopt_array($ch, [
-            CURLOPT_URL            => $url . $sep . http_build_query($fullPayload),
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 5,
-            CURLOPT_CONNECTTIMEOUT => 3,
-        ]);
-    }
-    $resp    = curl_exec($ch);
-    $code    = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlErr = curl_error($ch);
-    curl_close($ch);
-
-    if ($curlErr) {
-        koma_error('cron hook dispatch failed', ['event' => $event, 'error' => $curlErr]);
-    } else {
-        koma_info('cron hook dispatched', ['event' => $event, 'http' => $code]);
-    }
-}
+require_once __DIR__ . '/../includes/hook.php';
+require_once __DIR__ . '/../includes/auth.php';
+// cron（CLI）からはそのまま動く。HTTP で叩く場合はログインが必要
+auth_require_api();
 
 function calc_elapsed_cron(array $segments): int {
     $total = 0;

@@ -11,6 +11,9 @@
 - `round_to_100min` アクションは完了済み + 100分超過コマのみ対象。
 - `set_slot_count` は JS から `CFG.today` を受け取る（深夜をまたいだとき翌日に書き込まないため）。
 
+## Hook
+- 送信は `includes/hook.php` の `dispatch_hook()` に一本化。timer.php は応答を待たせないようタイムアウト3秒（接続2秒）で直接呼ぶ。設定画面のテスト送信は「有効」の有無に関係なく送る。
+
 ## データ
 - コマのステータス全種: `idle` / `running` / `paused` / `overtime` / `completed` / `closed` / `auto_closed`
   - `overtime_max` は廃止（既存データの互換性のためステータス定義は残る）。

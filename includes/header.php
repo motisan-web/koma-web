@@ -25,6 +25,13 @@ $navItems = [
         <div class="site-header__user">
             <?= htmlspecialchars($currentUser['nickname'] ?? 'もちさん') ?>
         </div>
+        <?php if (function_exists('auth_current_user') && auth_current_user() !== null): ?>
+            <form method="POST" action="/login.php" class="site-header__logout">
+                <input type="hidden" name="action" value="logout">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars(auth_csrf_token()) ?>">
+                <button type="submit" class="btn-secondary" style="font-size:12px;">ログアウト</button>
+            </form>
+        <?php endif; ?>
     </div>
 </header>
 <script>

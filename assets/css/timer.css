@@ -419,6 +419,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 }
 .form-row input[type="text"],
 .form-row input[type="url"],
+.form-row input[type="password"],
 .form-row select {
     background: var(--bg-input);
     border: 1px solid var(--border);

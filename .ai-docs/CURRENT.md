@@ -1,7 +1,7 @@
 # CURRENT
 
 ## 進行中
-- I-014: ログイン機能。方針: data/auth.json に ID・パスワードハッシュ、初回のみ登録フォーム、ローカル（ループバック接続かつ .local/localhost）はログイン不要。Hook 送信を includes/hook.php の共通関数にまとめ、timer.php からの自己 HTTP 呼び出し（api/hook.php）をやめる
+（なし）
 
 ## 次にやること
 - ユーザーの「実装を開始」の合図を待ってから、合意した順に1件ずつ実装する:

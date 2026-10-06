@@ -19,20 +19,23 @@
 ├── stats.php         # 統計ページ（日/週/月/プロジェクト別）
 ├── settings.php      # Hook・基本設定ページ
 ├── help.php          # 使い方詳細
+├── login.php         # ログイン・初回登録・ログアウト
 ├── api/
 │   ├── timer.php     # タイマー操作API（start/pause/complete/update_meta等）
-│   ├── hook.php      # Hook発火処理（cURL dispatch）
 │   ├── output.php    # マークダウン出力API
 │   └── cron_check.php # cron 用。現状は100分超過で自動完了する（I-012）
 ├── includes/
 │   ├── header.php / footer.php
 │   ├── config.php    # 設定ローダー
+│   ├── auth.php      # ログイン（ローカルは不要）
+│   ├── hook.php      # Hook 送信の共通関数
 │   ├── data.php      # JSON読み書き（ファイルロック付き）
 │   ├── user.php      # ユーザーコンテキスト
 │   └── logger.php    # エラーログ（logs/error.log）
 ├── data/
 │   ├── config.json
 │   ├── users/moti.json
+│   ├── auth.json     # アカウント（git 管理外）
 │   └── sessions/YYYY/MM-DD/data.json
 ├── assets/css/timer.css
 └── assets/js/timer.js

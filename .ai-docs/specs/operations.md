@@ -15,3 +15,10 @@
 
 ## cron
 - `/api/cron_check.php` を2〜5分ごとに実行する想定（未設定 → backlog の T-001）。現状のスクリプトは100分超過で自動完了させるので、設定前に I-012 を片付ける。
+
+## ログイン
+- `includes/auth.php`。ページは `auth_require_page()`（未ログインなら `/login.php` へ）、API は `auth_require_api()`（401）で守る。新しいページ・API を足したら必ずどちらかを呼ぶ。
+- アカウントは `data/auth.json`（git 管理外）。1件もないときだけ `/login.php` が初回登録フォームになる。デプロイ直後は本人がすぐ登録すること（先に誰かが開くと登録されてしまう）。
+- ローカル判定は「REMOTE_ADDR がループバック」かつ「ホスト名が .local / localhost」。CLI（cron）も認証なしで動く。
+- セッションは `data/php_sessions/` に保存し、30日有効。Cookie は HttpOnly・SameSite=Lax（Lax なのでフォーム POST の CSRF は Cookie が送られず防げる。login.php のフォームは念のためトークンも確認）。
+- 5回続けて失敗すると、そのアカウントを15分ロックする。パスワードを忘れたら `data/auth.json` をサーバー上で消すと初回登録からやり直せる。
