@@ -17,3 +17,13 @@ jobs:
           password: ${{ secrets.STAGING_PASSWORD }}
           server-dir: ./
           local-dir: ./
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            .claude/**
+            .claude-codex/**
+            .ai-docs/**
+            CLAUDE.md
+            AGENTS.md
+            koma_web_design.md

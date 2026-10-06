@@ -1,1 +1,9 @@
 Options -Indexes
+
+# 公開しないファイル・フォルダ（#I-011）
+# 旧ドキュメントフォルダ .claude-codex は本番に残るため、移行後も塞いだままにする
+RedirectMatch 404 /\.(git|github|claude|claude-codex|ai-docs)(/|$)
+RedirectMatch 404 ^/(data|logs)(/|$)
+RedirectMatch 404 \.(md|log|yml|yaml|zip)$
+RedirectMatch 404 /\.(gitignore|user\.ini|ftp-deploy-sync-state\.json)$
+RedirectMatch 404 /config\.local\.php$
