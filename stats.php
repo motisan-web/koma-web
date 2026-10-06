@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/user.php';
 require_once __DIR__ . '/includes/koma_stats.php';
 require_once __DIR__ . '/includes/auth.php';
 auth_require_page();
+koma_auto_close_stale(2);  // 2日以上前に閉じ忘れたコマを自動中止する（#I-015）
 
 $config      = load_config();
 $currentUser = get_koma_user();

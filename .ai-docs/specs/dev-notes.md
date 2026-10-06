@@ -5,7 +5,7 @@
 ## API（`api/timer.php`）
 - 全アクションは `date` パラメータを受け付ける（省略時は今日）。前日コマ操作時は JS が `date` を付けてリクエストする。
 - スロット上限は `SLOT_MAX = 20`（config.json の `koma_count` とは別）。
-- `auto_close_old_komas()` は `get_state` 呼び出し時に毎回走る（2日以上前のみ対象、軽量）。
+- 2日以上前の作業中・一時停止中のコマは `koma_auto_close_stale()`（`includes/koma_stats.php`）が自動中止（`auto_closed`）にする。全期間が対象で、トップ・統計の表示時と `get_state` で走る。開いたままの区間は今の時刻で閉じるので、実行中のまま放置したコマは異常値になり、統計の日別表示で時間を直す。
 - `set_theme` / `get_state` は slot バリデーション前に処理する（slot 不要なアクション）。
 - `reset` アクションは `segments` が空のコマ専用。開始済みコマには適用不可。
 - `round_to_100min` アクションは完了済み + 100分超過コマのみ対象。
@@ -21,7 +21,7 @@
   - `overtime_max` は廃止（既存データの互換性のためステータス定義は残る）。
   - 100分自動完了は廃止済み。100分経過時は `koma_100min` hook の発火のみ（cron_check.php も状態を変えない）。
 - `closed`・`auto_closed` は統計・マークダウン出力でも「完了扱い」（チェックボックス `[x]`）。
-- 完了扱いで `total_seconds` が1000分以上のコマは異常値（`includes/koma_stats.php` の `KOMA_ANOMALY_MINUTES`）。統計画面の全タブ上部に全期間の一覧を出し、日別表示で行を強調する。集計ルールは `includes/koma_stats.php` に集める。
+- 1000分以上のコマは異常値（完了扱いは `total_seconds`、作業中・一時停止中は今までの経過で判定）（`includes/koma_stats.php` の `KOMA_ANOMALY_MINUTES`）。統計画面の全タブ上部に全期間の一覧を出し、日別表示で行を強調する。集計ルールは `includes/koma_stats.php` に集める。
 - コマ数の換算は `koma_value()`: 分数 ÷ 80。完了扱いで20分超〜80分未満は80分扱い、20分以下は実分数。作業中・一時停止中は segments から今の時刻までの実分数。0分と異常値は0。JS（`timer.js` の `komaValue()`）にも同じ規則があるので、変えるときは両方直す。
 - `koma_daily_all()` は全セッションを読んで日別のコマ数とプロジェクト別のコマ数を返す（トップ表示のたびに走る）。
 - `KOMA_DAY_TIERS`（6 フルデイ / 8 オーバードライブ / 10 ハイパードライブ / 12 リミットブレイク）が1日のコマ数による実績の段階。カレンダーの色の段階（0 / 〜3 / 〜6 / 6+ / 8+ / 10+）もこれにそろえる。

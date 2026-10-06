@@ -764,7 +764,7 @@ function komaValue(k) {
     const done = isDone(k.status);
     const sec  = done ? (k.total_seconds ?? 0) : liveElapsed(k);
     if (sec <= 0) return 0;
-    if (done && sec >= CFG.anomalyMinutes * 60) return 0;
+    if (sec >= CFG.anomalyMinutes * 60) return 0;  // 閉じ忘れの作業中コマも数えない（#I-015）
     return (done && sec > KOMA_SHORT_SEC && sec < KOMA_UNIT_SEC ? KOMA_UNIT_SEC : sec) / KOMA_UNIT_SEC;
 }
 

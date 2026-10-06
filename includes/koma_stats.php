@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/data.php';
+require_once __DIR__ . '/config.php';
 
 // これ以上の分数のコマは放置などによる異常値とみなす（#T-003）
 define('KOMA_ANOMALY_MINUTES', 1000);
@@ -14,8 +15,48 @@ function koma_is_done(array $k): bool {
     return in_array($k['status'] ?? 'idle', KOMA_DONE_STATUSES, true);
 }
 
+// 完了扱いは記録した時間、作業中・一時停止中は今までの経過で判定する（閉じ忘れたコマも数えないため。#I-015）
 function koma_is_anomaly(array $k): bool {
-    return koma_is_done($k) && (int)($k['total_seconds'] ?? 0) >= KOMA_ANOMALY_MINUTES * 60;
+    return koma_seconds($k) >= KOMA_ANOMALY_MINUTES * 60;
+}
+
+/**
+ * $daysThreshold 日以上前の「作業中・一時停止中」のコマを自動中止（auto_closed）にする。#I-015
+ * 全期間が対象。開いたままの区間は今の時刻で閉じるので、長く放置したコマは異常値になり、
+ * 統計の日別表示で時間を直せる。トップ・統計の表示時と get_state で呼ぶ。返り値: 閉じたコマの数
+ */
+function koma_auto_close_stale(int $daysThreshold = 2, ?int $now = null): int {
+    $now  ??= time();
+    $tz    = new DateTimeZone('Asia/Tokyo');
+    $limit = (new DateTime('@' . $now))->setTimezone($tz)->modify("-{$daysThreshold} days")->format('Y-m-d');
+    $nowIso = (new DateTime('@' . $now))->setTimezone($tz)->format('c');
+    $komaSec = (int)(load_config()['koma_duration_minutes'] ?? KOMA_UNIT_MINUTES) * 60;
+    $closed = 0;
+    foreach (glob(__DIR__ . '/../data/sessions/*/*/data.json') ?: [] as $file) {
+        if (!preg_match('#(\d{4})/(\d{2}-\d{2})/data\.json$#', str_replace('\\', '/', $file), $m)) continue;
+        $date = $m[1] . '-' . $m[2];
+        if ($date > $limit) continue;
+        $session = load_session($date);
+        $changed = 0;
+        foreach ($session['koma'] as &$k) {
+            if (!in_array($k['status'] ?? '', ['running', 'paused', 'overtime'], true)) continue;
+            $last = count($k['segments'] ?? []) - 1;
+            if ($last >= 0 && !isset($k['segments'][$last]['end'])) $k['segments'][$last]['end'] = $nowIso;
+            $elapsed = koma_seconds(['status' => 'running'] + $k, $now);
+            $k['total_seconds']    = $elapsed;
+            $k['overtime_seconds'] = max(0, $elapsed - $komaSec);
+            $k['status']           = 'auto_closed';
+            $k['completed_at']     = $nowIso;
+            $changed++;
+        }
+        unset($k);
+        if ($changed) {
+            save_session($session);
+            koma_info('auto_closed stale komas', ['date' => $date, 'count' => $changed]);
+            $closed += $changed;
+        }
+    }
+    return $closed;
 }
 
 /**

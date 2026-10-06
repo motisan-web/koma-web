@@ -88,46 +88,6 @@ function close_open_segment(array &$segments): void {
 }
 
 /**
- * Scan sessions older than $days_threshold days and auto_close any running/paused komas.
- * Returns number of komas auto-closed.
- */
-function auto_close_old_komas(int $days_threshold, int $koma_duration_sec): int {
-    $tz      = new DateTimeZone('Asia/Tokyo');
-    $closed  = 0;
-
-    // Scan back up to 90 days looking for stale sessions
-    for ($d = $days_threshold; $d <= 90; $d++) {
-        $date = (new DateTime("-{$d} days", $tz))->format('Y-m-d');
-        $path = session_data_path($date);
-        if (!file_exists($path)) continue;
-
-        $session = load_session($date);
-        $changed = false;
-
-        foreach ($session['koma'] as &$k) {
-            if (!in_array($k['status'], ['running', 'paused', 'overtime'])) continue;
-
-            close_open_segment($k['segments']);
-            $elapsed = calc_elapsed($k['segments']);
-
-            $k['total_seconds']    = $elapsed;
-            $k['overtime_seconds'] = max(0, $elapsed - $koma_duration_sec);
-            $k['status']           = 'auto_closed';
-            $k['completed_at']     = now_iso();
-            $changed = true;
-            $closed++;
-        }
-        unset($k);
-
-        if ($changed) {
-            save_session($session);
-            koma_info('auto_closed stale komas', ['date' => $date, 'count' => $closed]);
-        }
-    }
-    return $closed;
-}
-
-/**
  * Collect incomplete komas from yesterday (running/paused/overtime).
  * Returns array of { date, koma } objects.
  */
@@ -208,8 +168,8 @@ if ($action === 'get_state') {
     $today   = today_str();
     $session = load_session($today);
 
-    // 1. Auto-close komas from 2+ days ago
-    auto_close_old_komas(2, $koma_duration);
+    // 1. Auto-close komas from 2+ days ago（全期間。#I-015）
+    koma_auto_close_stale(2);
 
     // 2. Compute live totals for today's running komas
     foreach ($session['koma'] as &$k) {
