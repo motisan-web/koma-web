@@ -118,7 +118,7 @@ $hookLabels = [
                 <input type="number" name="koma_duration_minutes" value="<?= (int)$config['koma_duration_minutes'] ?>" min="10" max="480" style="width:100px;">
             </div>
             <div class="form-row">
-                <label>最大時間（分）— この時間で自動完了</label>
+                <label>最大時間（分）— この時間で 100分 hook を送る（自動完了はしない）</label>
                 <input type="number" name="max_duration_minutes" value="<?= (int)$config['max_duration_minutes'] ?>" min="10" max="480" style="width:100px;">
             </div>
         </div>

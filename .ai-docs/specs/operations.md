@@ -14,7 +14,7 @@
 - 新しく公開したくないファイル・フォルダを足したら、`.htaccess` と `exclude` の両方を直し、ローカルで 404 を確認する。
 
 ## cron
-- `/api/cron_check.php` を2〜5分ごとに実行する想定（未設定 → backlog の T-001）。現状のスクリプトは100分超過で自動完了させるので、設定前に I-012 を片付ける。
+- `api/cron_check.php` を CLI から2〜5分ごとに実行する想定（未設定 → backlog の T-001）。役割はブラウザを閉じていても `koma_80min` / `koma_100min` を送ることだけで、コマの状態は変えない。
 
 ## ログイン
 - `includes/auth.php`。ページは `auth_require_page()`（未ログインなら `/login.php` へ）、API は `auth_require_api()`（401）で守る。新しいページ・API を足したら必ずどちらかを呼ぶ。

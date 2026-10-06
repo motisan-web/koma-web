@@ -379,13 +379,14 @@ switch ($action) {
         api_ok(['koma' => $k, 'date' => $target_date]);
 
     case 'notify_80min':
-        if ($idx === -1) api_error('コマが見つかりません');
-        fire_hook('koma_80min', ['slot' => $slot, 'user_id' => CURRENT_USER_ID, 'date' => $target_date]);
-        api_ok();
-
     case 'notify_100min':
-        // Hook-only: no longer auto-completes the koma (廃止: #I-004).
-        fire_hook('koma_100min', ['slot' => $slot, 'user_id' => CURRENT_USER_ID, 'date' => $target_date]);
+        // Hook のみ。自動完了はしない（#I-004）。cron と二重に送らないよう、送信済みをコマに記録する
+        if ($idx === -1) api_error('コマが見つかりません');
+        $event = $action === 'notify_80min' ? 'koma_80min' : 'koma_100min';
+        $k = &$session['koma'][$idx];
+        if (dispatch_koma_hook_once($k, $event, ['slot' => $slot, 'user_id' => CURRENT_USER_ID, 'date' => $target_date], load_config(), 3, 2)) {
+            save_session($session);
+        }
         api_ok(['date' => $target_date]);
 
     case 'round_to_100min':

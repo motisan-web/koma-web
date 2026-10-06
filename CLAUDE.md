@@ -23,7 +23,7 @@
 ├── api/
 │   ├── timer.php     # タイマー操作API（start/pause/complete/update_meta等）
 │   ├── output.php    # マークダウン出力API
-│   └── cron_check.php # cron 用。現状は100分超過で自動完了する（I-012）
+│   └── cron_check.php # cron 用。80分・100分の hook を送るだけ
 ├── includes/
 │   ├── header.php / footer.php
 │   ├── config.php    # 設定ローダー

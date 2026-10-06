@@ -104,9 +104,9 @@ $currentUser = get_koma_user();
             <thead><tr><th>イベント</th><th>タイミング</th><th>備考</th></tr></thead>
             <tbody>
                 <tr><td><code>koma_start</code></td><td>コマ開始時</td><td></td></tr>
-                <tr><td><code>koma_complete</code></td><td>コマ完了時</td><td>手動完了・100分自動完了の両方</td></tr>
+                <tr><td><code>koma_complete</code></td><td>コマ完了時</td><td>手動完了時</td></tr>
                 <tr><td><code>koma_80min</code></td><td>80分経過時</td><td>超過開始タイミング</td></tr>
-                <tr><td><code>koma_100min</code></td><td>100分経過時</td><td>自動完了と同時に発火</td></tr>
+                <tr><td><code>koma_100min</code></td><td>100分経過時</td><td>コマは完了しない（hook のみ）。ブラウザを閉じていても cron から送られる</td></tr>
                 <tr><td><code>break_notify</code></td><td>完了後10分</td><td>10分休憩チェックがオンの場合のみ</td></tr>
             </tbody>
         </table>

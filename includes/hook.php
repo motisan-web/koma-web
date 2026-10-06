@@ -60,3 +60,15 @@ function dispatch_hook(string $event, array $payload, array $config, int $timeou
 
     return ['skipped' => false, 'code' => $code, 'error' => $error, 'body' => is_string($response) ? $response : ''];
 }
+
+/**
+ * コマ1つにつき1回だけ送る hook（koma_80min / koma_100min）。
+ * ブラウザ（notify_*）と cron の両方から呼ばれるので、送ったことをコマの hooks_fired に記録して二重送信を防ぐ。
+ * $k を書き換えるので、呼び出し側で保存すること。送った場合は true。
+ */
+function dispatch_koma_hook_once(array &$k, string $event, array $payload, array $config, int $timeout = 5, int $connectTimeout = 3): bool {
+    if (!empty($k['hooks_fired'][$event])) return false;
+    $k['hooks_fired'][$event] = (new DateTime('now', new DateTimeZone('Asia/Tokyo')))->format('c');
+    dispatch_hook($event, $payload, $config, $timeout, $connectTimeout);
+    return true;
+}

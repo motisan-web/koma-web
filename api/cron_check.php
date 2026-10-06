@@ -1,10 +1,12 @@
 <?php
 /**
- * Cron job: auto-complete komas that exceeded max_duration_minutes.
- * Run every 1-5 minutes via cron or Windows Task Scheduler.
+ * Cron job: ブラウザを閉じていても koma_80min / koma_100min の hook を送る。
+ * コマの状態は変えない（自動完了は廃止: #I-004 / #I-012）。放置したコマは統計画面の編集で直す。
+ * 送信済みはコマの hooks_fired に記録されるので、ブラウザ側の通知と二重には送らない。
+ * Run every 2-5 minutes via cron.
  *
  * Usage (CLI):  php /path/to/api/cron_check.php
- * Usage (HTTP): GET /api/cron_check.php  (Xserver cron URL指定の場合)
+ * Usage (HTTP): GET /api/cron_check.php（ログインが必要）
  */
 
 require_once __DIR__ . '/../includes/data.php';
@@ -36,8 +38,8 @@ $maxSec     = (int)$config['max_duration_minutes'] * 60;
 $tz         = new DateTimeZone('Asia/Tokyo');
 
 // Scan sessions from the past 2 days (covers day-spanning komas)
-$checked   = 0;
-$completed = 0;
+$checked = 0;
+$fired   = 0;
 
 for ($d = 0; $d <= 1; $d++) {
     $date = (new DateTime("-{$d} days", $tz))->format('Y-m-d');
@@ -53,49 +55,15 @@ for ($d = 0; $d <= 1; $d++) {
 
         $checked++;
         $elapsed = calc_elapsed_cron($k['segments']);
+        $payload = ['slot' => $k['id'], 'user_id' => CURRENT_USER_ID, 'date' => $date];
 
-        // Auto-complete at max duration
-        if ($elapsed >= $maxSec) {
-            // Close open segment
-            if (!empty($k['segments'])) {
-                $last = &$k['segments'][count($k['segments']) - 1];
-                if (!isset($last['end'])) {
-                    // Cap end at start + maxSec
-                    $startTs = (new DateTime($last['start'], $tz))->getTimestamp();
-                    $capTs   = $startTs + $maxSec;
-                    $now     = time();
-                    $endTs   = min($capTs, $now);
-                    $last['end'] = (new DateTime('@' . $endTs))->setTimezone($tz)->format('c');
-                }
-                unset($last);
-            }
-
-            $finalElapsed              = calc_elapsed_cron($k['segments']);
-            $k['total_seconds']        = $finalElapsed;
-            $k['overtime_seconds']     = max(0, $finalElapsed - $komaDurSec);
-            $k['status']               = 'completed';
-            $k['completed_at']         = (new DateTime('now', $tz))->format('c');
-            $changed                   = true;
-            $completed++;
-
-            koma_info('cron: auto-completed koma', [
-                'date'    => $date,
-                'slot'    => $k['id'],
-                'elapsed' => $finalElapsed,
-            ]);
-
-            dispatch_hook('koma_100min', ['slot' => $k['id'], 'user_id' => 'moti'], $config);
-            dispatch_hook('koma_complete', [
-                'slot'             => $k['id'],
-                'user_id'          => 'moti',
-                'total_seconds'    => $k['total_seconds'],
-                'overtime_seconds' => $k['overtime_seconds'],
-            ], $config);
-
-            // break_notify if flagged
-            if (!empty($k['break_after'])) {
-                dispatch_hook('break_notify', ['slot' => $k['id'], 'user_id' => 'moti'], $config);
-            }
+        if ($elapsed >= $komaDurSec && dispatch_koma_hook_once($k, 'koma_80min', $payload, $config)) {
+            $changed = true;
+            $fired++;
+        }
+        if ($elapsed >= $maxSec && dispatch_koma_hook_once($k, 'koma_100min', $payload, $config)) {
+            $changed = true;
+            $fired++;
         }
     }
     unset($k);
@@ -105,7 +73,7 @@ for ($d = 0; $d <= 1; $d++) {
     }
 }
 
-$msg = "cron_check done. checked={$checked} completed={$completed}";
+$msg = "cron_check done. checked={$checked} fired={$fired}";
 koma_info($msg);
 
 // Output (visible in cron mail / HTTP response)
