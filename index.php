@@ -123,6 +123,7 @@ if (!$isEmbed) {
     $achStore   = ach_load_opened();
     $achNew     = array_sum(ach_unopened($ach['events'], $achStore['opened']));
     $homeStats['progress'] = $ach['progress'];
+    $anomalies = find_anomaly_komas();  // お知らせ（#T-004）
     $homeStats['daySvgs']  = array_combine(array_column(KOMA_DAY_TIERS, 'key'), array_map(fn($t) => ach_svg($t['key']), KOMA_DAY_TIERS));
 }
 
@@ -382,7 +383,35 @@ function status_class(string $status): string {
         <!-- お知らせ -->
         <section class="panel notice-panel" id="notice-panel">
             <h2 class="panel__title">お知らせ</h2>
+            <div class="info-row">
+                <div class="info-row__ico" aria-hidden="true">⏳</div>
+                <div>0時まで <b id="remain-time">-</b><br><span class="sub">あと <b id="remain-koma">-</b> コマ分の時間</span></div>
+            </div>
+            <div class="info-row" id="info-day">
+                <div class="info-row__ico" aria-hidden="true">🎯</div>
+                <div id="info-day-text">-</div>
+            </div>
+            <div class="info-row" id="info-week">
+                <div class="info-row__ico" aria-hidden="true">📅</div>
+                <div id="info-week-text">-</div>
+            </div>
+            <?php if ($anomalies): ?>
+            <div class="info-row is-warn">
+                <div class="info-row__ico" aria-hidden="true">⚠</div>
+                <div>
+                    <b>異常値 <?= count($anomalies) ?>件</b>（<?= KOMA_ANOMALY_MINUTES ?>分以上）
+                    <ul class="info-row__list">
+                        <?php foreach (array_slice($anomalies, 0, 3) as $a): ?>
+                        <li><a href="/stats.php?tab=day&amp;date=<?= urlencode($a['date']) ?>#koma-row-<?= (int)$a['koma']['id'] ?>"><?= htmlspecialchars((new DateTime($a['date'], $tz2))->format('n/d')) ?> コマ<?= (int)$a['koma']['id'] ?>（<?= (int)round($a['koma']['total_seconds'] / 60) ?>分）</a></li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <?php if (count($anomalies) > 3): ?><span class="sub">ほか <?= count($anomalies) - 3 ?>件は統計で確認できます</span><br><?php endif; ?>
+                    <span class="sub">放置していたら統計の日別表示で時間を直してください</span>
+                </div>
+            </div>
+            <?php endif; ?>
             <?php if ($achNew > 0): ?>
+            <div class="info-row">
             <button type="button" class="chest<?= $achStore['initialized'] ? '' : ' is-big' ?>" id="btn-chest">
                 <svg viewBox="0 0 100 88" aria-hidden="true">
                     <rect x="12" y="40" width="76" height="42" rx="5" fill="#a0612b" stroke="#5a3214" stroke-width="3"/>
@@ -391,8 +420,7 @@ function status_class(string $status): string {
                 </svg>
                 <span><?= $achStore['initialized'] ? '新しい実績が' : 'これまでの実績が' ?> <b><?= $achNew ?>件</b> 届いています<br><span class="sub">クリックで受け取る</span></span>
             </button>
-            <?php else: ?>
-            <p class="notice-empty" id="notice-empty">新しいお知らせはありません</p>
+            </div>
             <?php endif; ?>
         </section>
     </aside>

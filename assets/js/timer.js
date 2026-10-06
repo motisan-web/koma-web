@@ -793,6 +793,32 @@ function updateSummary() {
     if (side) side.textContent = `${fmt1(today)} コマ`;
     renderLevelVisual(lv);
     renderProgress(today);
+    renderInfo(today);
+}
+
+// お知らせ（#T-004）: 0時までの残り・次の今日の実績・ウィークリー30
+function renderInfo(today) {
+    const remainEl = document.getElementById('remain-time');
+    if (!remainEl) return;
+    const now = new Date(Date.now() + _clockOffset);
+    const midnight = new Date(now); midnight.setHours(24, 0, 0, 0);
+    const min = Math.max(0, Math.floor((midnight - now) / 60000));
+    remainEl.textContent = `${Math.floor(min / 60)}時間${min % 60}分`;
+    document.getElementById('remain-koma').textContent = fmt1(min / 80);
+
+    const next = DAY_TIERS.find(t => today < t.min);
+    document.getElementById('info-day-text').innerHTML = next
+        ? `${escHtml(next.name)}まで <b>あと ${fmt1(next.min - today)} コマ</b><br><span class="sub">締め切り: 今日 0:00</span>`
+        : '今日の実績はすべて獲得しました';
+
+    const st = CFG.homeStats;
+    const week = st.progress.find(p => p.key === 'week30');
+    const weekEl = document.getElementById('info-week-text');
+    if (!week) { weekEl.textContent = '今週のウィークリー30は獲得済みです'; return; }
+    const rest = week.goal - (week.done + (today - st.todayAtRender));
+    weekEl.innerHTML = rest > 0
+        ? `ウィークリー30まで <b>あと ${fmt1(rest)} コマ</b><br><span class="sub">締め切り: 土曜 24:00</span>`
+        : '今週のウィークリー30は獲得済みです';
 }
 
 // Lv の絵: 30Lv ごとに実が1つ増える（最大5つ）
@@ -859,7 +885,7 @@ function initChest() {
         setTimeout(() => {
             modal.hidden = false;
             document.getElementById('chest-modal-close').focus();
-            chest.outerHTML = '<p class="notice-empty">新しいお知らせはありません</p>';
+            chest.closest('.info-row').remove();
         }, 400);
     });
 }
@@ -943,6 +969,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initFolds();
     initTooltip();
     initChest();
+    setInterval(() => renderInfo(todayKoma()), 30000);  // 実行中のコマがなくても残り時間を進める
     updateSummary();
 
     const addBtn = document.getElementById('btn-add-koma');

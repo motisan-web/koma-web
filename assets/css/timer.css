@@ -793,7 +793,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .ach-group { margin-bottom: 14px; }
 .ach-group:last-child { margin-bottom: 0; }
 .ach-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
-.ach-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.ach-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; }
 .ach {
     position: relative;
     aspect-ratio: 1;
@@ -836,8 +836,17 @@ button.ach:hover, button.ach:focus-visible { outline: 2px solid var(--highlight)
 .prog__meta { font-size: 11px; color: var(--text-muted); text-align: right; white-space: nowrap; }
 .prog__row .meter { grid-column: 2 / 4; height: 6px; }
 
-/* お知らせ・宝箱 */
-.notice-empty { font-size: 13px; color: var(--text-muted); }
+/* お知らせ（#T-004）・宝箱 */
+.info-row { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.info-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.info-row:first-of-type { padding-top: 0; }
+.info-row__ico { width: 22px; text-align: center; flex: none; }
+.info-row b { color: var(--highlight); font-variant-numeric: tabular-nums; }
+.info-row .sub { font-size: 11px; color: var(--text-muted); }
+.info-row.is-warn b { color: var(--red); }
+.info-row__list { list-style: none; margin: 2px 0; }
+.info-row__list a { color: var(--text); text-decoration: underline; text-decoration-color: var(--border); }
+.info-row__list a:hover { color: var(--red); }
 .chest { all: unset; box-sizing: border-box; cursor: pointer; display: flex; gap: 10px; align-items: center; width: 100%; font-size: 13px; color: var(--text); }
 .chest b { color: var(--highlight); }
 .chest .sub { font-size: 11px; color: var(--text-muted); }
@@ -869,3 +878,10 @@ button.ach:hover, button.ach:focus-visible { outline: 2px solid var(--highlight)
 .modal__box .btn { min-width: 140px; }
 @keyframes modal-pop { from { transform: scale(.7); opacity: 0; } }
 @keyframes modal-drop { from { transform: translateY(-16px) scale(.6); opacity: 0; } }
+
+/* スマホではヘッダーのメニューを折り返さず横スクロールにする */
+@media (max-width: 767px) {
+    .site-header__nav { overflow-x: auto; min-width: 0; }
+    .site-header__nav-link { white-space: nowrap; }
+    .site-header__user { display: none; }
+}
