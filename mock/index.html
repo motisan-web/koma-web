@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="ja" data-skin="rpg">
+<html lang="ja" data-skin="grow">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>見た目モック — コマタイマー</title>
-<!-- T-007: 見た目の方向性を比べるためのモック（ローカル専用・データはすべてサンプル） -->
+<title>見た目モック v2 — コマタイマー</title>
+<!-- T-007: 見た目モック v2（ローカル専用・データはすべてサンプル）。最初の4案は v1.html に残してある -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=M+PLUS+Rounded+1c:wght@400;700;800&family=Orbitron:wght@500;700;900&family=Zen+Kaku+Gothic+New:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&family=Orbitron:wght@500;700;900&family=Shippori+Mincho:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================================
    共通の骨組み（スキンは変数と一部の上書きだけで切り替える）
@@ -15,505 +15,641 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font);
-    min-height: 100vh;
-    transition: background .3s, color .3s;
+    background: var(--bg); color: var(--text);
+    font-family: var(--font); font-size: 14px;
+    min-height: 100vh; transition: background .3s, color .3s;
 }
 button { font: inherit; color: inherit; cursor: pointer; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 
 .switcher {
     position: sticky; top: 0; z-index: 50;
     display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
-    padding: 10px 16px;
-    background: #111; color: #eee;
+    padding: 10px 16px; background: #111; color: #eee;
     font-family: system-ui, sans-serif; font-size: 13px;
 }
 .switcher strong { margin-right: 6px; }
-.switcher button {
-    background: #2a2a2a; border: 1px solid #444; border-radius: 6px;
-    padding: 6px 12px; color: #eee;
-}
+.switcher button { background: #2a2a2a; border: 1px solid #444; border-radius: 6px; padding: 6px 12px; color: #eee; }
 .switcher button[aria-pressed="true"] { background: #fff; color: #111; border-color: #fff; }
+.switcher a { color: #9cf; }
 .switcher .note { margin-left: auto; opacity: .6; }
 
-.wrap { max-width: 1080px; margin: 0 auto; padding: 20px 16px 60px; }
-
-/* ---- プレイヤー帯 ---- */
-.player {
-    display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center;
-    padding: 16px 20px; margin-bottom: 20px;
-    background: var(--panel); border: var(--panel-border); border-radius: var(--radius);
-    box-shadow: var(--panel-shadow);
-}
-.player__avatar {
-    width: 56px; height: 56px; display: grid; place-items: center;
-    font-size: 30px; background: var(--accent-soft); border-radius: var(--avatar-radius);
-    border: var(--panel-border);
-}
-.player__name { font-weight: 700; font-size: 18px; }
-.player__title { font-size: 12px; color: var(--muted); }
-.meter { margin-top: 8px; }
-.meter__label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-.meter__bar { height: 12px; background: var(--track); border-radius: var(--bar-radius); overflow: hidden; border: var(--bar-border); }
-.meter__fill { height: 100%; width: var(--p); background: var(--fill); border-radius: var(--bar-radius); }
-.player__score { text-align: right; }
-.player__score .big { font-family: var(--font-num); font-size: 34px; font-weight: 900; color: var(--accent); line-height: 1; }
-.player__score .small { font-size: 12px; color: var(--muted); }
-
-/* ---- レイアウト ---- */
-.grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
-@media (max-width: 860px) { .grid { grid-template-columns: 1fr; } .player { grid-template-columns: auto 1fr; } .player__score { grid-column: 1 / -1; text-align: left; } }
+.wrap { max-width: 1160px; margin: 0 auto; padding: 20px 16px 60px; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 
 .panel {
     background: var(--panel); border: var(--panel-border); border-radius: var(--radius);
     box-shadow: var(--panel-shadow); padding: 16px; margin-bottom: 20px;
 }
 .panel__title {
-    font-family: var(--font-title); font-weight: 700; font-size: 15px;
-    margin: 0 0 12px; display: flex; align-items: center; gap: 8px; color: var(--title);
-    letter-spacing: var(--title-spacing);
+    font-family: var(--font-title); font-weight: 700; font-size: 15px; color: var(--title);
+    margin: 0 0 12px; display: flex; align-items: baseline; gap: 10px; letter-spacing: var(--title-spacing);
 }
+.panel__title .sub { font-family: var(--font); font-weight: 500; font-size: 12px; color: var(--muted); letter-spacing: 0; }
+.panel__title .right { margin-left: auto; }
 
-/* ---- コマカード ---- */
-.komas { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.meter__bar { height: 8px; background: var(--track); border-radius: var(--bar-radius); overflow: hidden; }
+.meter__fill { height: 100%; width: var(--p); background: var(--fill); border-radius: var(--bar-radius); }
+
+/* ---- レベル帯 ---- */
+.level { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 18px; align-items: center; }
+.level__visual svg { width: 96px; height: 96px; display: block; }
+.level__top { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.level__lv { font-family: var(--font-num); font-size: 30px; font-weight: 900; color: var(--accent); line-height: 1; }
+.level__lv small { font-size: 14px; margin-right: 2px; }
+.level__next { font-size: 13px; color: var(--muted); }
+.level__next b { color: var(--text); }
+.level .meter__bar { margin: 10px 0 12px; height: 10px; }
+.stats { display: flex; gap: 8px; flex-wrap: wrap; }
+.stat { padding: 6px 12px; border-radius: var(--chip-radius); background: var(--soft); font-size: 12px; color: var(--muted); }
+.stat b { font-family: var(--font-num); font-size: 18px; color: var(--text); margin: 0 2px; }
+.stat.is-hot b { color: var(--accent); }
+
+/* ---- 今日のコマ ---- */
+.komas { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
 .koma {
-    position: relative; padding: 14px; border-radius: var(--card-radius);
-    background: var(--card); border: var(--card-border); box-shadow: var(--card-shadow);
-    min-height: 150px; display: flex; flex-direction: column; gap: 8px;
-    transition: transform .15s;
+    padding: 12px; border-radius: var(--card-radius); background: var(--card); border: var(--card-border);
+    display: flex; flex-direction: column; gap: 6px; min-height: 140px;
 }
-.koma:hover { transform: translateY(-2px); }
 .koma__head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
 .koma__no { font-family: var(--font-num); font-weight: 700; }
-.tag { font-size: 11px; padding: 2px 8px; border-radius: var(--tag-radius); background: var(--tag-bg); color: var(--tag-text); }
-.koma__name { font-weight: 700; font-size: 14px; line-height: 1.4; }
+.state { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: var(--chip-radius); background: var(--soft); color: var(--muted); }
+.state--done { background: var(--good-soft); color: var(--good); }
+.state--run { background: var(--accent); color: var(--on-accent); }
+.koma__name { font-weight: 700; line-height: 1.4; }
 .koma__proj { font-size: 11px; color: var(--muted); }
-.koma__time { font-family: var(--font-num); font-size: 26px; font-weight: 700; margin-top: auto; }
-.koma .meter__bar { height: 8px; }
-.koma__actions { display: flex; gap: 6px; }
-.btn {
-    flex: 1; padding: 8px; border-radius: var(--btn-radius); border: var(--btn-border);
-    background: var(--btn-bg); color: var(--btn-text); font-weight: 700; font-size: 13px;
-    box-shadow: var(--btn-shadow);
-}
-.btn--sub { background: transparent; color: var(--text); }
-.koma.is-done { opacity: var(--done-opacity); }
+.koma__time { font-family: var(--font-num); font-size: 24px; font-weight: 700; margin-top: auto; }
 .koma.is-done .koma__time { color: var(--good); }
 .koma.is-running { border: var(--running-border); box-shadow: var(--running-shadow); }
-.koma.is-empty { display: grid; place-items: center; color: var(--muted); border-style: dashed; }
-
-/* ---- 通知欄 ---- */
-.notice-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
-.notice-row:last-child { border-bottom: 0; }
-.notice-row .ico { font-size: 20px; width: 28px; text-align: center; }
-.notice-row b { font-family: var(--font-num); color: var(--accent); }
-.notice-row .sub { font-size: 11px; color: var(--muted); }
-.notice-row.warn b { color: var(--bad); }
-
-/* ---- 宝箱 ---- */
-.chests { display: flex; gap: 14px; flex-wrap: wrap; }
-.chest {
-    background: none; border: 0; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 4px;
-    font-size: 11px; color: var(--muted);
+.koma.is-idle .koma__name, .koma.is-idle .koma__proj { color: var(--muted); font-weight: 500; }
+.koma__actions { display: flex; gap: 6px; }
+.btn {
+    flex: 1; padding: 7px 10px; border-radius: var(--btn-radius); border: 0;
+    background: var(--btn-bg); color: var(--btn-text); font-weight: 700; font-size: 13px;
 }
-.chest svg { width: 70px; height: 62px; filter: drop-shadow(0 4px 6px rgba(0,0,0,.3)); }
-.chest.is-big svg { width: 96px; height: 84px; }
+.btn--sub { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+.add-koma {
+    border: 2px dashed var(--line); border-radius: var(--card-radius); background: transparent; color: var(--muted);
+    min-height: 140px; font-weight: 700;
+}
+.add-koma:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ---- カレンダー ---- */
+.cal { overflow-x: auto; padding-bottom: 4px; }
+.cal__inner { display: inline-grid; grid-template-columns: auto auto; gap: 4px 6px; }
+.cal__months { grid-column: 2; display: grid; grid-auto-flow: column; grid-auto-columns: 14px; gap: 3px; font-size: 10px; color: var(--muted); height: 14px; }
+.cal__months span { white-space: nowrap; }
+.cal__days { display: grid; grid-template-rows: repeat(7, 14px); gap: 3px; font-size: 10px; color: var(--muted); line-height: 14px; }
+.cal__grid { display: grid; grid-template-rows: repeat(7, 14px); grid-auto-flow: column; grid-auto-columns: 14px; gap: 3px; }
+.cal__cell { border-radius: var(--cell-radius); background: var(--cal0); position: relative; }
+.cal__cell[data-lv="1"] { background: var(--cal1); }
+.cal__cell[data-lv="2"] { background: var(--cal2); }
+.cal__cell[data-lv="3"] { background: var(--cal3); }
+.cal__cell[data-lv="4"] { background: var(--cal4); }
+.cal__cell[data-lv="5"] { background: var(--cal5); }
+.cal__cell.is-future { background: transparent; }
+.cal__cell.is-today { outline: 2px solid var(--text); outline-offset: -1px; }
+.cal__cell.is-unlock::after {
+    content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--unlock);
+    box-shadow: 0 0 0 1px var(--panel-solid);
+}
+.cal__legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 10px; font-size: 11px; color: var(--muted); }
+.cal__legend i { display: inline-block; width: 12px; height: 12px; border-radius: var(--cell-radius); vertical-align: -2px; margin-right: 4px; position: relative; }
+.cal__legend i.unlock { background: var(--cal0); }
+.cal__legend i.unlock::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--unlock); }
+
+/* ---- 履歴 ---- */
+.history__toggle { all: unset; cursor: pointer; display: flex; width: 100%; align-items: baseline; gap: 10px; }
+.history table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+.history th { text-align: left; font-size: 11px; font-weight: 500; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.history td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
+.history tr:last-child td { border-bottom: 0; }
+.history td.date, .history td.min { font-family: var(--font-num); white-space: nowrap; }
+.history td.proj { color: var(--muted); font-size: 12px; }
+.history td.min { text-align: right; }
+.history .btn { padding: 3px 10px; font-size: 12px; }
+.history.is-closed table { display: none; }
+@media (max-width: 600px) { .history td.proj, .history th.proj { display: none; } }
+
+/* ---- 実績（サイドバー） ---- */
+.ach-group { margin-bottom: 14px; }
+.ach-group:last-child { margin-bottom: 0; }
+.ach-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+.ach-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.ach {
+    position: relative; aspect-ratio: 1; display: grid; place-items: center;
+    background: var(--soft); border: 0; border-radius: var(--chip-radius); padding: 0;
+}
+.ach svg { width: 78%; height: 78%; }
+.ach.is-locked svg { filter: grayscale(1); opacity: .35; }
+.ach:hover, .ach:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ach__count {
+    position: absolute; right: -3px; bottom: -3px; min-width: 18px; height: 18px; padding: 0 4px;
+    font-family: var(--font-num); font-size: 10px; font-weight: 700; line-height: 18px; text-align: center;
+    background: var(--accent); color: var(--on-accent); border-radius: 999px;
+}
+.ach.is-today-new { animation: shine 1.8s ease-in-out infinite; }
+@keyframes shine { 50% { box-shadow: 0 0 0 3px var(--accent); } }
+.ach-note { font-size: 10px; color: var(--muted); margin-top: 6px; }
+
+/* ---- お知らせ ---- */
+.notice { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.notice:last-child { border-bottom: 0; }
+.notice .ico { width: 22px; text-align: center; flex: none; }
+.notice b { font-family: var(--font-num); color: var(--accent); }
+.notice .sub { font-size: 11px; color: var(--muted); }
+.notice.warn b { color: var(--bad); }
+.chest { all: unset; cursor: pointer; display: flex; gap: 10px; align-items: center; width: 100%; padding: 8px 0 0; font-size: 13px; }
+.chest svg { width: 44px; height: 40px; flex: none; }
 .chest:not(.is-open) svg { animation: wiggle 2.4s ease-in-out infinite; }
 .chest .lid { transform-origin: 50% 40%; transition: transform .4s cubic-bezier(.3,1.6,.5,1); }
-.chest.is-open .lid { transform: translateY(-14px) rotate(-14deg); }
-.chest.is-open .glow { opacity: 1; }
-.chest .glow { opacity: 0; transition: opacity .3s; }
-@keyframes wiggle { 0%, 80%, 100% { transform: rotate(0); } 84% { transform: rotate(-6deg); } 88% { transform: rotate(6deg); } 92% { transform: rotate(-4deg); } 96% { transform: rotate(3deg); } }
+.chest.is-open .lid { transform: translateY(-12px) rotate(-14deg); }
+@keyframes wiggle { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-6deg); } 90% { transform: rotate(6deg); } 95% { transform: rotate(-3deg); } }
 
-/* ---- バッジ ---- */
-.badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; }
-.badge {
-    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px;
-    padding: 10px 6px; border-radius: var(--card-radius); background: var(--card); border: var(--card-border);
-    position: relative; font-size: 11px;
-}
-.badge svg { width: 54px; height: 54px; }
-.badge__name { font-weight: 700; font-size: 12px; }
-.badge__cond { color: var(--muted); font-size: 10px; }
-.badge__count {
-    position: absolute; top: 6px; right: 6px; font-family: var(--font-num); font-weight: 700; font-size: 11px;
-    background: var(--accent); color: var(--on-accent); border-radius: 999px; padding: 1px 6px;
-}
-.badge.is-locked svg { filter: grayscale(1) brightness(.5); opacity: .5; }
-.badge.is-locked .badge__name { color: var(--muted); }
-.badge .meter__bar { width: 100%; height: 5px; }
-.section-label { font-size: 11px; color: var(--muted); margin: 14px 0 8px; letter-spacing: .1em; }
+/* ---- フッター ---- */
+.foot { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--muted); padding-top: 8px; }
+.pj-label { font-family: "IBM Plex Mono", monospace; padding: 1px 8px; border: 1px solid var(--line); border-radius: 4px; }
 
-/* ---- 育成エリア（育成もの風でだけ表示） ---- */
-.garden { display: none; }
+/* ---- ツールチップ（実績とカレンダーで共用） ---- */
+.tip {
+    position: fixed; z-index: 200; pointer-events: none; max-width: 260px;
+    background: var(--tip-bg); color: var(--tip-text); border-radius: 8px; padding: 10px 12px;
+    font-size: 12px; line-height: 1.55; box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    opacity: 0; transform: translateY(4px); transition: opacity .12s, transform .12s;
+}
+.tip.is-show { opacity: 1; transform: none; }
+.tip b { font-size: 13px; }
+.tip .t-dim { opacity: .7; }
+.tip .t-next { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.2); }
+.tip .meter__bar { margin-top: 4px; height: 5px; background: rgba(255,255,255,.2); }
 
 /* ---- 開封モーダル ---- */
-.modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; place-items: center; z-index: 100; padding: 16px; }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; place-items: center; z-index: 100; padding: 16px; }
 .modal.is-open { display: grid; }
 .modal__box {
-    background: var(--panel); border: var(--panel-border); border-radius: var(--radius); color: var(--text);
-    max-width: 520px; width: 100%; padding: 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5);
-    animation: pop .35s cubic-bezier(.3,1.6,.5,1);
+    background: var(--panel-solid); color: var(--text); border-radius: var(--radius); max-width: 420px; width: 100%;
+    padding: 22px; text-align: center; animation: pop .3s cubic-bezier(.3,1.6,.5,1);
 }
 .modal__box h3 { font-family: var(--font-title); margin: 0 0 4px; color: var(--title); }
-.modal__box .badges { margin: 16px 0; }
-.modal__box .badge { animation: drop .4s both; }
-@keyframes pop { from { transform: scale(.6); opacity: 0; } }
-@keyframes drop { from { transform: translateY(-20px) scale(.6); opacity: 0; } }
+.modal__box .ach-list { margin: 16px 0; }
+.modal__box .ach { animation: drop .4s both; }
+@keyframes pop { from { transform: scale(.7); opacity: 0; } }
+@keyframes drop { from { transform: translateY(-16px) scale(.6); opacity: 0; } }
 
 /* =========================================================
-   スキン1: RPG風（ドット絵・ウィンドウ枠・クエストログ）
-   ========================================================= */
-[data-skin="rpg"] {
-    --font: "DotGothic16", system-ui, sans-serif;
-    --font-title: "DotGothic16", sans-serif;
-    --font-num: "DotGothic16", monospace;
-    --bg: #10142b; --text: #f4f1e6; --muted: #a9a8c9; --title: #ffd866; --title-spacing: .08em;
-    --panel: #1b2152; --panel-border: 4px double #e8e3d0; --panel-shadow: 0 0 0 3px #10142b, 0 0 0 5px #4a4f8a;
-    --radius: 4px; --avatar-radius: 2px;
-    --card: #151a42; --card-border: 2px solid #6d72b8; --card-shadow: none; --card-radius: 2px;
-    --accent: #ffd866; --accent-soft: #2c3478; --on-accent: #10142b;
-    --track: #0b0f24; --fill: repeating-linear-gradient(90deg, #5be37d 0 6px, #3fc463 6px 8px); --bar-radius: 0; --bar-border: 2px solid #e8e3d0;
-    --tag-bg: #2c3478; --tag-text: #ffd866; --tag-radius: 0;
-    --btn-bg: #e8e3d0; --btn-text: #10142b; --btn-border: 2px solid #10142b; --btn-radius: 0; --btn-shadow: 3px 3px 0 #000;
-    --good: #5be37d; --bad: #ff6b6b; --line: #4a4f8a; --done-opacity: .75;
-    --running-border: 2px solid #ffd866; --running-shadow: 0 0 0 2px #10142b, 0 0 14px rgba(255,216,102,.5);
-    image-rendering: pixelated;
-}
-[data-skin="rpg"] body { background-image: radial-gradient(#ffffff10 1px, transparent 1px); background-size: 16px 16px; }
-[data-skin="rpg"] .koma.is-running .koma__head::after { content: "▶ たたかっている"; color: #ffd866; animation: blink 1s steps(2) infinite; }
-@keyframes blink { 50% { opacity: 0; } }
-
-/* =========================================================
-   スキン2: アーケード風（ネオン・スコア・コンボ）
-   ========================================================= */
-[data-skin="arcade"] {
-    --font: "Zen Kaku Gothic New", system-ui, sans-serif;
-    --font-title: "Orbitron", "Zen Kaku Gothic New", sans-serif;
-    --font-num: "Orbitron", monospace;
-    --bg: #07020f; --text: #f2eaff; --muted: #8f7fb0; --title: #00f0ff; --title-spacing: .15em;
-    --panel: #120726; --panel-border: 1px solid #ff2bd6; --panel-shadow: 0 0 18px rgba(255,43,214,.35), inset 0 0 24px rgba(255,43,214,.08);
-    --radius: 14px; --avatar-radius: 50%;
-    --card: #0d0420; --card-border: 1px solid #3b1e6e; --card-shadow: none; --card-radius: 12px;
-    --accent: #00f0ff; --accent-soft: #1a0b3a; --on-accent: #07020f;
-    --track: #1d0d3a; --fill: linear-gradient(90deg, #ff2bd6, #00f0ff); --bar-radius: 999px; --bar-border: 0;
-    --tag-bg: #2a0f4f; --tag-text: #ff8af0; --tag-radius: 999px;
-    --btn-bg: linear-gradient(90deg, #ff2bd6, #7a2bff); --btn-text: #fff; --btn-border: 0; --btn-radius: 999px; --btn-shadow: 0 0 14px rgba(255,43,214,.6);
-    --good: #39ff9f; --bad: #ff3b6b; --line: #3b1e6e; --done-opacity: .8;
-    --running-border: 1px solid #00f0ff; --running-shadow: 0 0 22px rgba(0,240,255,.55);
-}
-[data-skin="arcade"] body { background-image: linear-gradient(transparent 95%, rgba(255,43,214,.12) 95%), linear-gradient(90deg, transparent 95%, rgba(0,240,255,.08) 95%); background-size: 40px 40px; }
-[data-skin="arcade"] .panel__title { text-transform: uppercase; text-shadow: 0 0 10px currentColor; }
-[data-skin="arcade"] .player__score .big { text-shadow: 0 0 16px #00f0ff; }
-[data-skin="arcade"] .koma.is-running .koma__time { color: #00f0ff; text-shadow: 0 0 12px #00f0ff; }
-[data-skin="arcade"] .koma.is-running .koma__head::after { content: "COMBO ×3"; font-family: "Orbitron"; color: #ff2bd6; font-weight: 900; }
-
-/* =========================================================
-   スキン3: カードゲーム風（コマ=カード・レア度で光る）
-   ========================================================= */
-[data-skin="card"] {
-    --font: "Zen Kaku Gothic New", system-ui, sans-serif;
-    --font-title: "Zen Kaku Gothic New", sans-serif;
-    --font-num: "Zen Kaku Gothic New", sans-serif;
-    --bg: #1d1a17; --text: #f6efe3; --muted: #b3a690; --title: #e9c46a; --title-spacing: .05em;
-    --panel: linear-gradient(160deg, #2b2620, #221e19); --panel-border: 1px solid #5c4d36; --panel-shadow: 0 10px 30px rgba(0,0,0,.4);
-    --radius: 14px; --avatar-radius: 12px;
-    --card: linear-gradient(170deg, #3a3128, #2a241e); --card-border: 2px solid #8a6f45; --card-shadow: 0 6px 14px rgba(0,0,0,.45); --card-radius: 12px;
-    --accent: #e9c46a; --accent-soft: #3a3128; --on-accent: #1d1a17;
-    --track: #14110e; --fill: linear-gradient(90deg, #b8860b, #ffe08a); --bar-radius: 999px; --bar-border: 1px solid #5c4d36;
-    --tag-bg: #4a3d2b; --tag-text: #f2d48f; --tag-radius: 6px;
-    --btn-bg: linear-gradient(180deg, #f0d48a, #c99a3e); --btn-text: #2a1e0c; --btn-border: 1px solid #7a5a24; --btn-radius: 8px; --btn-shadow: 0 2px 0 #7a5a24;
-    --good: #8fd18a; --bad: #e76f51; --line: #4a3d2b; --done-opacity: 1;
-    --running-border: 2px solid #ffe08a; --running-shadow: 0 0 0 1px #ffe08a, 0 0 24px rgba(255,224,138,.45);
-}
-[data-skin="card"] .koma { aspect-ratio: 5 / 6; min-height: 0; }
-[data-skin="card"] .koma::before {
-    content: ""; position: absolute; inset: 6px; border: 1px solid rgba(233,196,106,.35); border-radius: 8px; pointer-events: none;
-}
-[data-skin="card"] .koma.is-done { background: linear-gradient(135deg, #3a3128 0%, #6b5532 45%, #fff2c2 50%, #6b5532 55%, #3a3128 100%); background-size: 300% 300%; animation: foil 4s linear infinite; }
-[data-skin="card"] .koma.is-done .koma__head::after { content: "★ R"; color: #ffe08a; font-weight: 900; }
-[data-skin="card"] .koma.is-done.is-long .koma__head::after { content: "★★ SR"; }
-@keyframes foil { to { background-position: 300% 300%; } }
-
-/* =========================================================
-   スキン4: 育成もの風（コマで木が育つ・やわらかい色）
+   スキン1: 育成（改） — 色はやわらかく、角は控えめ、言葉は中立
    ========================================================= */
 [data-skin="grow"] {
-    --font: "M PLUS Rounded 1c", system-ui, sans-serif;
-    --font-title: "M PLUS Rounded 1c", sans-serif;
-    --font-num: "M PLUS Rounded 1c", sans-serif;
-    --bg: #f3f7ec; --text: #3d4a35; --muted: #84917a; --title: #4f8a3c; --title-spacing: .02em;
-    --panel: #ffffff; --panel-border: 0; --panel-shadow: 0 6px 20px rgba(79,138,60,.12);
-    --radius: 22px; --avatar-radius: 50%;
-    --card: #fbfdf7; --card-border: 2px solid #e3ecd5; --card-shadow: none; --card-radius: 18px;
-    --accent: #f08a5d; --accent-soft: #fde8dc; --on-accent: #fff;
-    --track: #e8efdc; --fill: linear-gradient(90deg, #9ad37a, #5fb04a); --bar-radius: 999px; --bar-border: 0;
-    --tag-bg: #eaf4df; --tag-text: #4f8a3c; --tag-radius: 999px;
-    --btn-bg: #5fb04a; --btn-text: #fff; --btn-border: 0; --btn-radius: 999px; --btn-shadow: 0 3px 0 #3f8a2f;
-    --good: #4f8a3c; --bad: #e0663f; --line: #e3ecd5; --done-opacity: 1;
-    --running-border: 2px solid #f08a5d; --running-shadow: 0 0 0 4px #fde8dc;
+    --font: "Zen Kaku Gothic New", system-ui, sans-serif; --font-title: var(--font); --font-num: "Zen Kaku Gothic New", sans-serif;
+    --bg: #f2f5ec; --text: #34402d; --muted: #7d8a73; --title: #3f7a30; --title-spacing: .02em;
+    --panel: #fff; --panel-solid: #fff; --panel-border: 1px solid #e2e9d6; --panel-shadow: 0 2px 8px rgba(63,122,48,.07);
+    --radius: 10px; --card-radius: 8px; --chip-radius: 6px; --btn-radius: 6px; --bar-radius: 4px; --cell-radius: 3px;
+    --card: #fafcf6; --card-border: 1px solid #e2e9d6; --soft: #eef3e6; --line: #e2e9d6;
+    --accent: #e9824f; --on-accent: #fff; --good: #3f8a30; --good-soft: #e3f1da; --bad: #d4502b;
+    --track: #e6eddc; --fill: linear-gradient(90deg, #8dcc6c, #4f9e3c);
+    --btn-bg: #4f9e3c; --btn-text: #fff;
+    --running-border: 1px solid #e9824f; --running-shadow: 0 0 0 3px #fbe4d7;
+    --cal0: #e9eee1; --cal1: #cfe6bd; --cal2: #9fd17f; --cal3: #5fae45; --cal4: #3b852b; --cal5: #e9824f; --unlock: #ffc93c;
+    --tip-bg: #2f3a29; --tip-text: #f4f8ee;
 }
-[data-skin="grow"] .garden { display: block; }
-[data-skin="grow"] .koma.is-done .koma__head::after { content: "🌱 しゅうかく済み"; color: #4f8a3c; }
-[data-skin="grow"] .koma.is-running .koma__head::after { content: "💧 水やり中"; color: #f08a5d; }
-.garden__scene { display: grid; grid-template-columns: 200px 1fr; gap: 16px; align-items: center; }
-.garden__scene svg { width: 100%; height: auto; }
-.garden__talk { background: #f6faf0; border-radius: 16px; padding: 12px 14px; font-size: 13px; line-height: 1.6; position: relative; }
-.garden__talk::before { content: ""; position: absolute; left: -8px; top: 22px; border: 8px solid transparent; border-right-color: #f6faf0; border-left: 0; }
-@media (max-width: 520px) { .garden__scene { grid-template-columns: 1fr; } }
+
+/* =========================================================
+   スキン2: 工房 — 紙と木と真鍮。コマで道具と工房が増えていく
+   ========================================================= */
+[data-skin="workshop"] {
+    --font: "Zen Kaku Gothic New", system-ui, sans-serif; --font-title: "Shippori Mincho", serif; --font-num: "IBM Plex Mono", monospace;
+    --bg: #ebe3d3; --text: #3a2e22; --muted: #85735e; --title: #6b3f1d; --title-spacing: .08em;
+    --panel: #f8f3e8; --panel-solid: #f8f3e8; --panel-border: 1px solid #cdbb9b; --panel-shadow: 0 1px 0 #cdbb9b, 0 4px 0 -1px #ddd0b6;
+    --radius: 3px; --card-radius: 2px; --chip-radius: 2px; --btn-radius: 2px; --bar-radius: 0; --cell-radius: 1px;
+    --card: #fffdf7; --card-border: 1px solid #d9c9aa; --soft: #efe6d4; --line: #dccdb0;
+    --accent: #b5652b; --on-accent: #fff8ee; --good: #4d6b33; --good-soft: #e3e8d2; --bad: #b23a2a;
+    --track: #e4d8c0; --fill: repeating-linear-gradient(90deg, #b5652b 0 10px, #9c5422 10px 12px);
+    --btn-bg: #3a2e22; --btn-text: #f8f3e8;
+    --running-border: 1px solid #b5652b; --running-shadow: 3px 3px 0 #b5652b;
+    --cal0: #e7dcc6; --cal1: #e2c69c; --cal2: #d29a5c; --cal3: #b5652b; --cal4: #7f3f16; --cal5: #3a2e22; --unlock: #f2c94c;
+    --tip-bg: #3a2e22; --tip-text: #f8f3e8;
+    background-image: radial-gradient(rgba(107,63,29,.06) 1px, transparent 1px); background-size: 6px 6px;
+}
+[data-skin="workshop"] .panel__title { border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+[data-skin="workshop"] .koma.is-done { background: repeating-linear-gradient(-45deg, #fffdf7 0 8px, #faf4e6 8px 16px); }
+
+/* =========================================================
+   スキン3: 航海 — 夜の宇宙。コマで航路が伸び、星系を解禁していく
+   ========================================================= */
+[data-skin="space"] {
+    --font: "Zen Kaku Gothic New", system-ui, sans-serif; --font-title: "Orbitron", "Zen Kaku Gothic New", sans-serif; --font-num: "Orbitron", monospace;
+    --bg: #0b1020; --text: #e6ecff; --muted: #8590b5; --title: #9fb6ff; --title-spacing: .12em;
+    --panel: rgba(20, 28, 54, .85); --panel-solid: #141c36; --panel-border: 1px solid #263257; --panel-shadow: 0 0 0 1px rgba(159,182,255,.04), 0 10px 30px rgba(0,0,0,.35);
+    --radius: 8px; --card-radius: 6px; --chip-radius: 5px; --btn-radius: 5px; --bar-radius: 2px; --cell-radius: 2px;
+    --card: #10172e; --card-border: 1px solid #263257; --soft: #1a2342; --line: #263257;
+    --accent: #ffb547; --on-accent: #1a1203; --good: #5ee0b5; --good-soft: #123a35; --bad: #ff6b81;
+    --track: #1a2342; --fill: linear-gradient(90deg, #4f7bff, #5ee0b5);
+    --btn-bg: #4f7bff; --btn-text: #fff;
+    --running-border: 1px solid #ffb547; --running-shadow: 0 0 18px rgba(255,181,71,.35);
+    --cal0: #161e3a; --cal1: #1f3570; --cal2: #2f55b8; --cal3: #4f7bff; --cal4: #5ee0b5; --cal5: #ffb547; --unlock: #fff;
+    --tip-bg: #e6ecff; --tip-text: #0b1020;
+    background-image: radial-gradient(1px 1px at 20% 30%, #fff8 50%, transparent), radial-gradient(1px 1px at 70% 80%, #fff6 50%, transparent), radial-gradient(1.5px 1.5px at 40% 60%, #fff5 50%, transparent);
+    background-size: 220px 220px, 310px 310px, 470px 470px;
+}
+[data-skin="space"] .panel__title { text-transform: uppercase; font-size: 13px; }
+[data-skin="space"] .panel__title .sub { text-transform: none; }
+[data-skin="space"] .tip .t-next { border-top-color: rgba(0,0,0,.15); }
+[data-skin="space"] .tip .meter__bar { background: rgba(0,0,0,.12); }
 </style>
 </head>
 <body>
 
 <div class="switcher" role="toolbar" aria-label="スキン切り替え">
-    <strong>見た目モック</strong>
-    <button data-skin-btn="rpg">RPG風</button>
-    <button data-skin-btn="arcade">アーケード風</button>
-    <button data-skin-btn="card">カードゲーム風</button>
-    <button data-skin-btn="grow">育成もの風</button>
-    <span class="note">データはすべてサンプル・ボタンは動きません（宝箱だけ開けられます）</span>
+    <strong>見た目モック v2</strong>
+    <button data-skin-btn="grow">育成（改）</button>
+    <button data-skin-btn="workshop">工房</button>
+    <button data-skin-btn="space">航海</button>
+    <a href="v1.html">最初の4案（v1）</a>
+    <span class="note">データはすべてサンプル。実績・カレンダーはマウスオーバー、宝箱はクリックできます</span>
 </div>
 
 <div class="wrap">
-
-    <!-- プレイヤー帯 -->
-    <section class="player">
-        <div class="player__avatar" data-text="avatar">🧙</div>
-        <div>
-            <div class="player__name"><span data-text="playerName">もちさん</span> <span class="tag" data-text="rank">Lv.37 コマ使い</span></div>
-            <div class="meter">
-                <div class="meter__label"><span data-text="todayLabel">きょうの進み</span><span><b>3.4</b> / 6 コマ</span></div>
-                <div class="meter__bar"><div class="meter__fill" style="--p:57%"></div></div>
-            </div>
-        </div>
-        <div class="player__score">
-            <div class="big">742</div>
-            <div class="small" data-text="totalLabel">累計コマ</div>
-        </div>
-    </section>
-
     <div class="grid">
-        <div>
-            <!-- 育成もの風だけで出るエリア -->
-            <section class="panel garden">
-                <h2 class="panel__title">🌳 コマの木</h2>
-                <div class="garden__scene">
-                    <svg viewBox="0 0 200 170" aria-hidden="true">
-                        <ellipse cx="100" cy="158" rx="80" ry="10" fill="#dce8c9"/>
-                        <rect x="92" y="88" width="16" height="70" rx="6" fill="#9b6b43"/>
-                        <circle cx="100" cy="70" r="46" fill="#7cc561"/>
-                        <circle cx="66" cy="86" r="28" fill="#6ab550"/>
-                        <circle cx="134" cy="86" r="28" fill="#6ab550"/>
-                        <circle cx="100" cy="44" r="26" fill="#8fd376"/>
-                        <circle cx="78" cy="62" r="7" fill="#f08a5d"/><circle cx="118" cy="52" r="7" fill="#f08a5d"/>
-                        <circle cx="126" cy="90" r="7" fill="#f08a5d"/><circle cx="72" cy="98" r="7" fill="#ffd166"/>
-                    </svg>
-                    <div class="garden__talk">
-                        きょうは <b>3.4コマ</b> ぶん育ったよ。あと <b>2.6コマ</b> で実がぜんぶ色づくみたい。<br>
-                        木は累計 <b>742コマ</b>。1000コマで花が咲くよ。
+        <main>
+            <!-- レベル -->
+            <section class="panel level">
+                <div class="level__visual" id="visual"></div>
+                <div>
+                    <div class="level__top">
+                        <div class="level__lv"><small>Lv.</small><span id="lv">--</span></div>
+                        <div class="level__next">次のLvまで あと <b class="num" id="lv-rest">--</b> コマ（6コマごとに Lv が1上がる）</div>
+                    </div>
+                    <div class="meter__bar"><div class="meter__fill" id="lv-bar" style="--p:0%"></div></div>
+                    <div class="stats">
+                        <div class="stat">累計<b id="st-total">--</b>コマ</div>
+                        <div class="stat is-hot">連続<b id="st-streak">--</b>日</div>
+                        <div class="stat">最長<b id="st-best">--</b>日</div>
+                        <div class="stat">フルデイ連続<b id="st-full">--</b>日</div>
                     </div>
                 </div>
             </section>
 
             <!-- 今日のコマ -->
             <section class="panel">
-                <h2 class="panel__title"><span data-text="komaTitle">⚔ きょうのクエスト</span></h2>
-                <div class="komas">
-                    <article class="koma is-done is-long">
-                        <div class="koma__head"><span class="koma__no">コマ 1</span></div>
-                        <div class="koma__name">LP noteia 画像準備</div>
-                        <div class="koma__proj">#project/lp-noteia-14</div>
-                        <div class="koma__time">1:32:10</div>
-                        <div class="meter__bar"><div class="meter__fill" style="--p:100%"></div></div>
-                    </article>
-                    <article class="koma is-done">
-                        <div class="koma__head"><span class="koma__no">コマ 2</span></div>
-                        <div class="koma__name">parts 作成</div>
-                        <div class="koma__proj">#project/lp-noteia-14</div>
-                        <div class="koma__time">1:20:00</div>
-                        <div class="meter__bar"><div class="meter__fill" style="--p:100%"></div></div>
-                    </article>
-                    <article class="koma is-running">
-                        <div class="koma__head"><span class="koma__no">コマ 3</span></div>
-                        <div class="koma__name">コマタイマー 見た目モック</div>
-                        <div class="koma__proj">#project/koma-web</div>
-                        <div class="koma__time">0:52:44</div>
-                        <div class="meter__bar"><div class="meter__fill" style="--p:66%"></div></div>
-                        <div class="koma__actions"><button class="btn btn--sub">一時停止</button><button class="btn">完了</button></div>
-                    </article>
-                    <article class="koma">
-                        <div class="koma__head"><span class="koma__no">コマ 4</span><span class="tag">準備OK</span></div>
-                        <div class="koma__name">請求書の整理</div>
-                        <div class="koma__proj">#project/others</div>
-                        <div class="koma__time">0:00:00</div>
-                        <div class="koma__actions"><button class="btn">開始</button></div>
-                    </article>
-                    <article class="koma is-empty"><span data-text="emptySlot">＋ あきコマ 5</span></article>
-                    <article class="koma is-empty"><span data-text="emptySlot6">＋ あきコマ 6</span></article>
+                <h2 class="panel__title"><span id="today-title">--/--（-- コマ）</span><span class="sub" id="today-next"></span></h2>
+                <div class="komas" id="komas"></div>
+            </section>
+
+            <!-- カレンダー -->
+            <section class="panel">
+                <h2 class="panel__title">カレンダー<span class="sub">直近26週・日曜始まり</span></h2>
+                <div class="cal"><div class="cal__inner">
+                    <div class="cal__months" id="cal-months"></div>
+                    <div class="cal__days"><span></span><span>月</span><span></span><span>水</span><span></span><span>金</span><span></span></div>
+                    <div class="cal__grid" id="cal-grid"></div>
+                </div></div>
+                <div class="cal__legend">
+                    <span><i style="background:var(--cal0)"></i>0</span>
+                    <span><i style="background:var(--cal1)"></i>〜3</span>
+                    <span><i style="background:var(--cal2)"></i>〜6</span>
+                    <span><i style="background:var(--cal3)"></i>6+ フルデイ</span>
+                    <span><i style="background:var(--cal4)"></i>8+ オーバードライブ</span>
+                    <span><i style="background:var(--cal5)"></i>10+</span>
+                    <span><i class="unlock"></i>実績を解禁した日</span>
                 </div>
             </section>
 
-            <!-- バッジ一覧 -->
-            <section class="panel">
-                <h2 class="panel__title"><span data-text="badgeTitle">🏅 しょうごう</span></h2>
-                <div class="section-label">期間内に達成</div>
-                <div class="badges" id="badges-period"></div>
-                <div class="section-label">累計</div>
-                <div class="badges" id="badges-total"></div>
-                <div class="section-label">連続</div>
-                <div class="badges" id="badges-streak"></div>
+            <!-- 履歴 -->
+            <section class="panel history" id="history">
+                <button class="history__toggle panel__title" id="history-toggle" aria-expanded="true">履歴<span class="sub">過去14日の完了コマ</span><span class="right" id="history-icon">▲</span></button>
+                <table>
+                    <thead><tr><th>日付</th><th>コマ</th><th>作業内容</th><th class="proj">プロジェクト</th><th style="text-align:right">時間</th><th></th></tr></thead>
+                    <tbody id="history-body"></tbody>
+                </table>
             </section>
-        </div>
+        </main>
 
         <aside>
-            <!-- 通知欄 -->
+            <!-- 実績 -->
             <section class="panel">
-                <h2 class="panel__title"><span data-text="noticeTitle">📜 クエストログ</span></h2>
-                <div class="notice-row">
-                    <div class="ico">⏳</div>
-                    <div>0時まで <b id="remain-time">--</b><br><span class="sub">あと <b id="remain-koma">--</b> コマ分の時間があります</span></div>
-                </div>
-                <div class="notice-row">
-                    <div class="ico">🎯</div>
-                    <div>フルデイまで <b>あと 2.6 コマ</b><br><span class="sub">締め切り: 今日 0:00</span></div>
-                </div>
-                <div class="notice-row">
-                    <div class="ico">📅</div>
-                    <div>ウィークリー30まで <b>あと 11.2 コマ</b><br><span class="sub">締め切り: 土曜 24:00</span></div>
-                </div>
-                <div class="notice-row warn">
-                    <div class="ico">⚠</div>
-                    <div><b>異常値 1件</b> 4/24 コマ2（1706分）<br><span class="sub">放置していたら時間を直してください →</span></div>
-                </div>
+                <h2 class="panel__title">実績</h2>
+                <div id="achievements"></div>
             </section>
 
-            <!-- 宝箱 -->
+            <!-- お知らせ -->
             <section class="panel">
-                <h2 class="panel__title"><span data-text="chestTitle">🎁 たからばこ</span></h2>
-                <div class="chests">
-                    <button class="chest is-big" data-chest="past"><span class="chest-svg"></span>これまでの実績 23個</button>
-                    <button class="chest" data-chest="new"><span class="chest-svg"></span>NEW フルデイ</button>
+                <h2 class="panel__title">お知らせ</h2>
+                <div class="notice"><div class="ico">⏳</div><div>0時まで <b id="remain-time">--</b><br><span class="sub">あと <b id="remain-koma">--</b> コマ分の時間</span></div></div>
+                <div class="notice"><div class="ico">🎯</div><div id="notice-today">--</div></div>
+                <div class="notice"><div class="ico">📅</div><div id="notice-week">--</div></div>
+                <div class="notice warn"><div class="ico">⚠</div><div><b>異常値 1件</b> 9/24 コマ2（1706分）<br><span class="sub">統計の日別表示で時間を直せます</span></div></div>
+                <div class="notice">
+                    <button class="chest" id="chest"><span id="chest-svg"></span><span>新しい実績が <b>2件</b> 届いています<br><span class="sub">クリックで受け取る</span></span></button>
                 </div>
             </section>
         </aside>
     </div>
+
+    <div class="foot"><span>コマタイマー — moti tools　v2.0.0</span><span class="pj-label">pj:koma-web</span></div>
 </div>
 
-<div class="modal" id="modal" role="dialog" aria-modal="true">
+<div class="tip" id="tip" role="tooltip"></div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal__box">
-        <h3 id="modal-title">バッジを手に入れた！</h3>
-        <div id="modal-sub" style="font-size:13px;opacity:.75;"></div>
-        <div class="badges" id="modal-badges"></div>
-        <button class="btn" id="modal-close" style="max-width:200px;">とじる</button>
+        <h3 id="modal-title">実績を受け取りました</h3>
+        <div style="font-size:13px;color:var(--muted)">昨日の作業で届いた実績です</div>
+        <div class="ach-list" id="modal-list" style="grid-template-columns:repeat(2,64px);justify-content:center;"></div>
+        <button class="btn" id="modal-close" style="max-width:160px;">閉じる</button>
     </div>
 </div>
 
 <script>
-// ---- バッジの絵（種類ごとに形を変える。色はバッジごと） ----
-const BADGE_SHAPES = {
-    // 期間内に達成: 盾
-    period: (c1, c2, icon) => `<svg viewBox="0 0 64 64"><path d="M32 4 56 12v18c0 15-10 25-24 30C18 55 8 45 8 30V12z" fill="${c1}" stroke="${c2}" stroke-width="3"/><path d="M32 10 50 16v14c0 11-7 19-18 23" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="3"/><text x="32" y="39" font-size="20" text-anchor="middle">${icon}</text></svg>`,
-    // 累計: 宝石
-    total: (c1, c2, icon) => `<svg viewBox="0 0 64 64"><path d="M14 22 24 8h16l10 14-18 34z" fill="${c1}" stroke="${c2}" stroke-width="3" stroke-linejoin="round"/><path d="M14 22h36M24 8l8 14 8-14M32 22v34" stroke="#fff" stroke-opacity=".4" stroke-width="2" fill="none"/><text x="32" y="40" font-size="14" text-anchor="middle">${icon}</text></svg>`,
-    // 連続: メダル
-    streak: (c1, c2, icon) => `<svg viewBox="0 0 64 64"><path d="M20 4h10l4 18h-8zM44 4H34l-4 18h8z" fill="${c2}"/><circle cx="32" cy="38" r="20" fill="${c1}" stroke="${c2}" stroke-width="3"/><circle cx="32" cy="38" r="14" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="2"/><text x="32" y="45" font-size="18" text-anchor="middle">${icon}</text></svg>`,
+// =========================================================
+// サンプルデータ（固定シードで毎回同じになる）
+// =========================================================
+const KOMA_MIN = 80;
+const DAY = 86400000;
+const today = new Date(); today.setHours(0, 0, 0, 0);
+const md = d => `${d.getMonth() + 1}/${String(d.getDate()).padStart(2, '0')}`;
+const fmt1 = n => (Math.round(n * 10) / 10).toFixed(1);
+
+// 今日のコマ（分数は T-005 の規則でコマ数に換算: 完了で20分超〜80分未満は80分扱い）
+const KOMAS = [
+    { name: 'LP noteia 画像準備',      proj: '#project/lp-noteia-14', min: 92,   state: 'done' },
+    { name: 'parts 作成',              proj: '#project/lp-noteia-14', min: 80,   state: 'done' },
+    { name: 'コマタイマー 見た目モック', proj: '#project/koma-web',     min: 52.7, state: 'run' },
+    { name: '請求書の整理',            proj: '#project/others',       min: 0,    state: 'idle' },
+    { name: '',                        proj: '',                      min: 0,    state: 'idle' },
+    { name: '',                        proj: '',                      min: 0,    state: 'idle' },
+];
+const komaValue = k => (k.state === 'done' && k.min > 20 && k.min < KOMA_MIN ? KOMA_MIN : k.min) / KOMA_MIN;
+const todayKoma = KOMAS.reduce((s, k) => s + komaValue(k), 0);
+
+// 直近26週の日別コマ数
+let seed = 7;
+const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+const WEEKS = 26;
+const start = new Date(today.getTime() - (today.getDay() + (WEEKS - 1) * 7) * DAY);
+const days = [];
+for (let t = start.getTime(); t <= today.getTime(); t += DAY) {
+    const d = new Date(t);
+    const back = Math.round((today - d) / DAY);
+    const weekend = d.getDay() === 0 || d.getDay() === 6;
+    let v = rnd() < (weekend ? .55 : .12) ? 0 : (weekend ? 1 : 3.5) + rnd() * (weekend ? 3 : 5.5);
+    if (back > 0 && back <= 12) v = Math.max(v, 1.2 + rnd() * 6);   // 連続12日
+    if (back === 13) v = 0;
+    if (back === 1 || back === 2) v = 6.2 + rnd() * 1.5;            // フルデイ2連
+    if (back === 40) v = 10.4;
+    if (back === 0) v = todayKoma;
+    days.push({ date: d, v: Math.round(v * 10) / 10 });
+}
+const BASE_TOTAL = 412.6;  // カレンダーより前の累計
+const total = BASE_TOTAL + days.reduce((s, d) => s + d.v, 0);
+
+// 連続記録（今日はまだ途中なので、今日0コマでも昨日までの連続を数える）
+function streakOf(pred) {
+    let cur = 0, best = 0, run = 0;
+    days.forEach(d => { run = pred(d.v) ? run + 1 : 0; best = Math.max(best, run); });
+    for (let i = days.length - 1; i >= 0; i--) {
+        if (pred(days[i].v)) cur++; else if (i === days.length - 1) continue; else break;
+    }
+    return { cur, best };
+}
+const streak = streakOf(v => v >= 1);
+const fullStreak = streakOf(v => v >= 6);
+
+// =========================================================
+// 実績の定義
+// =========================================================
+const TODAY_TIERS = [
+    { key: 'full',  min: 6,  name: 'フルデイ',         icon: '☀', c: ['#f4b942', '#9a6a12'] },
+    { key: 'od',    min: 8,  name: 'オーバードライブ', icon: '⚡', c: ['#ff7a59', '#9c2f17'] },
+    { key: 'hyper', min: 10, name: 'ハイパードライブ', icon: '🚀', c: ['#b28dff', '#4b2a8f'] },
+    { key: 'limit', min: 12, name: 'リミットブレイク', icon: '💥', c: ['#ff4f8b', '#8f1240'] },
+];
+const dayCount = min => days.filter(d => d.v >= min).length;
+const nextTodayTier = TODAY_TIERS.find(t => todayKoma < t.min);
+
+const weekStart = new Date(today.getTime() - today.getDay() * DAY);
+const weekKoma = days.filter(d => d.date >= weekStart).reduce((s, d) => s + d.v, 0);
+
+// プロジェクト別（直近7日に触れていないものは表示しない）
+const PROJECTS = [
+    { id: 'lp-noteia-14', koma: 63.4, last: 0 },
+    { id: 'koma-web',     koma: 21.8, last: 0 },
+    { id: 'others',       koma: 112.5, last: 3 },
+    { id: 'tax-2026',     koma: 54.0, last: 23 },
+];
+const visibleProjects = PROJECTS.filter(p => p.last <= 7);
+
+const SHAPES = {
+    shield: (c1, c2, icon) => `<svg viewBox="0 0 64 64"><path d="M32 4 56 12v18c0 15-10 25-24 30C18 55 8 45 8 30V12z" fill="${c1}" stroke="${c2}" stroke-width="3"/><text x="32" y="40" font-size="22" text-anchor="middle">${icon}</text></svg>`,
+    gem:    (c1, c2, icon) => `<svg viewBox="0 0 64 64"><path d="M12 22 23 7h18l11 15-20 35z" fill="${c1}" stroke="${c2}" stroke-width="3" stroke-linejoin="round"/><path d="M12 22h40" stroke="#fff" stroke-opacity=".45" stroke-width="2"/><text x="32" y="44" font-size="${String(icon).length > 2 ? 11 : 17}" font-weight="700" fill="#fff" text-anchor="middle" font-family="sans-serif">${icon}</text></svg>`,
+    medal:  (c1, c2, icon) => `<svg viewBox="0 0 64 64"><path d="M20 3h10l4 18h-8zM44 3H34l-4 18h8z" fill="${c2}"/><circle cx="32" cy="39" r="20" fill="${c1}" stroke="${c2}" stroke-width="3"/><text x="32" y="47" font-size="20" text-anchor="middle">${icon}</text></svg>`,
+    sun:    (c1, c2, icon) => `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="${c1}" stroke="${c2}" stroke-width="3"/><circle cx="32" cy="32" r="19" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="2" stroke-dasharray="3 4"/><text x="32" y="41" font-size="24" text-anchor="middle">${icon}</text></svg>`,
 };
 
-const BADGES = {
-    period: [
-        { name: 'フルデイ',        cond: '1日6コマ',       icon: '☀', c: ['#f4b942', '#9a6a12'], count: 12 },
-        { name: 'オーバードライブ', cond: '1日8コマ',       icon: '⚡', c: ['#ff6b6b', '#8f2323'], count: 3 },
-        { name: 'ウィークリー30',  cond: '1週間30コマ',    icon: '📅', c: ['#6bc5ff', '#1f5f8f'], count: 4 },
-        { name: 'マンスリー120',   cond: '1か月120コマ',   icon: '🌙', c: ['#b28dff', '#4b2a8f'], count: 1 },
-        { name: '皆勤',            cond: '日〜土 毎日1コマ', icon: '🗓', c: ['#7be0a4', '#1f7a4a'], count: 2 },
-    ],
-    total: [
-        { name: '累計100コマ',  cond: '累計コマ',  icon: '100', c: ['#cfd8dc', '#607d8b'], count: 1 },
-        { name: '累計500コマ',  cond: '累計コマ',  icon: '500', c: ['#ffd54f', '#a07800'], count: 1 },
-        { name: '累計1000コマ', cond: 'あと258コマ', icon: '1000', c: ['#80deea', '#00838f'], locked: true, progress: 74 },
-        { name: '100時間',      cond: '累計時間 ×9', icon: '⏱', c: ['#ffab91', '#bf360c'], count: 9 },
-        { name: 'noteia職人',   cond: '同じPJで50コマ', icon: '🛠', c: ['#a5d6a7', '#2e7d32'], count: 1 },
-    ],
-    streak: [
-        { name: '7日連続',        cond: '1コマ以上の日',  icon: '🔥', c: ['#ff8a65', '#bf360c'], count: 2 },
-        { name: '30日連続',       cond: 'いま12日目',     icon: '🔥', c: ['#ff7043', '#8f1d00'], locked: true, progress: 40 },
-        { name: 'フルデイ3連',    cond: '6コマの日×3',    icon: '☀', c: ['#ffe082', '#a07800'], count: 1 },
-        { name: 'フルデイ7連',    cond: 'いま2日目',      icon: '☀', c: ['#fff176', '#8d7a00'], locked: true, progress: 28 },
-    ],
+const progressBar = p => `<div class="meter__bar"><div class="meter__fill" style="--p:${Math.min(100, Math.max(0, p))}%"></div></div>`;
+const ACH = [
+    {
+        label: '今日', side: `${fmt1(todayKoma)} コマ`,
+        items: TODAY_TIERS.map(t => {
+            const got = todayKoma >= t.min;
+            return {
+                shape: 'sun', c: t.c, icon: t.icon, count: dayCount(t.min), locked: dayCount(t.min) === 0, todayNew: got,
+                tip: `<b>${t.name}</b><br><span class="t-dim">1日 ${t.min}コマ以上</span><br>これまで ${dayCount(t.min)}回`
+                    + `<div class="t-next">${got ? '今日は獲得済み' : `今日あと <b>${fmt1(t.min - todayKoma)}</b> コマで獲得`}${got ? '' : progressBar(todayKoma / t.min * 100)}</div>`,
+            };
+        }),
+    },
+    {
+        label: '期間',
+        items: [
+            { shape: 'shield', c: ['#6bc5ff', '#1f5f8f'], icon: '📅', count: 4, tip: `<b>ウィークリー30</b><br><span class="t-dim">日〜土で30コマ</span><br>これまで 4回<div class="t-next">今週 ${fmt1(weekKoma)} コマ・あと <b>${fmt1(Math.max(0, 30 - weekKoma))}</b> コマ（土曜 24:00 まで）${progressBar(weekKoma / 30 * 100)}</div>` },
+            { shape: 'shield', c: ['#b28dff', '#4b2a8f'], icon: '🌙', count: 1, tip: `<b>マンスリー120</b><br><span class="t-dim">1か月で120コマ</span><br>これまで 1回<div class="t-next">今月 41.3 コマ・あと <b>78.7</b> コマ（月末まで）${progressBar(34)}</div>` },
+            { shape: 'shield', c: ['#7be0a4', '#1f7a4a'], icon: '🗓', count: 2, tip: `<b>皆勤</b><br><span class="t-dim">日〜土の毎日1コマ以上</span><br>これまで 2回<div class="t-next">今週は ${today.getDay() + 1}日中 ${today.getDay() + 1}日 達成中</div>` },
+        ],
+    },
+    {
+        label: '累計',
+        items: [
+            { shape: 'gem', c: ['#80deea', '#00838f'], icon: Math.floor(total / 100) * 100, count: Math.floor(total / 100), tip: `<b>累計コマ</b><br><span class="t-dim">100コマごと</span><br>累計 ${fmt1(total)} コマ・${Math.floor(total / 100)}回<div class="t-next">次の ${Math.ceil(total / 100) * 100} コマまで あと <b>${fmt1(Math.ceil(total / 100) * 100 - total)}</b>${progressBar(total % 100)}</div>` },
+            { shape: 'gem', c: ['#ffab91', '#bf360c'], icon: '⏱', count: Math.floor(total * 80 / 60 / 100), tip: `<b>累計時間</b><br><span class="t-dim">100時間ごと</span><br>累計 ${Math.floor(total * 80 / 60)} 時間<div class="t-next">次の ${(Math.floor(total * 80 / 6000) + 1) * 100} 時間まで あと <b>${(Math.floor(total * 80 / 6000) + 1) * 100 - Math.floor(total * 80 / 60)}</b> 時間</div>` },
+            ...visibleProjects.map(p => ({
+                shape: 'gem', c: ['#a5d6a7', '#2e7d32'], icon: '🛠', count: Math.floor(p.koma / 50), locked: p.koma < 50,
+                tip: `<b>${p.id} 職人</b><br><span class="t-dim">同じプロジェクトで50コマごと</span><br>累計 ${fmt1(p.koma)} コマ<div class="t-next">次まで あと <b>${fmt1(50 - p.koma % 50)}</b> コマ${progressBar(p.koma % 50 * 2)}</div>`,
+            })),
+        ],
+        note: `直近7日に触れていないプロジェクトは非表示（${PROJECTS.length - visibleProjects.length}件）`,
+    },
+    {
+        label: '連続', side: `いま ${streak.cur}日`,
+        items: [
+            { shape: 'medal', c: ['#ff8a65', '#bf360c'], icon: '🔥', count: 3, tip: `<b>7日連続</b><br><span class="t-dim">1コマ以上の日が7日続く</span><br>これまで 3回<div class="t-next">いま ${streak.cur}日連続（最長 ${streak.best}日）</div>` },
+            { shape: 'medal', c: ['#ff7043', '#8f1d00'], icon: '🔥', count: 0, locked: true, tip: `<b>30日連続</b><br><span class="t-dim">1コマ以上の日が30日続く</span><div class="t-next">あと <b>${30 - streak.cur}</b> 日${progressBar(streak.cur / 30 * 100)}</div>` },
+            { shape: 'medal', c: ['#ffe082', '#a07800'], icon: '☀', count: 1, tip: `<b>フルデイ3連</b><br><span class="t-dim">6コマの日が3日続く</span><br>これまで 1回<div class="t-next">いま ${fullStreak.cur}日目・今日 6コマで達成</div>` },
+        ],
+    },
+];
+
+// =========================================================
+// 描画
+// =========================================================
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const tipStore = [];
+const achHtml = a => {
+    tipStore.push(a.tip);
+    return `<button class="ach${a.locked ? ' is-locked' : ''}${a.todayNew ? ' is-today-new' : ''}" data-tip="${tipStore.length - 1}" aria-label="${esc(a.tip.replace(/<[^>]+>/g, ' '))}">
+        ${SHAPES[a.shape](a.c[0], a.c[1], a.icon)}${a.count > 0 ? `<span class="ach__count">${a.count}</span>` : ''}</button>`;
 };
 
-function badgeHtml(type, b, delay = 0) {
-    return `<div class="badge${b.locked ? ' is-locked' : ''}" style="animation-delay:${delay}ms">
-        ${b.count > 1 ? `<span class="badge__count">×${b.count}</span>` : ''}
-        ${BADGE_SHAPES[type](b.c[0], b.c[1], b.icon)}
-        <div class="badge__name">${b.name}</div>
-        <div class="badge__cond">${b.cond}</div>
-        ${b.locked ? `<div class="meter__bar"><div class="meter__fill" style="--p:${b.progress}%"></div></div>` : ''}
-    </div>`;
-}
-for (const type of Object.keys(BADGES)) {
-    document.getElementById(`badges-${type}`).innerHTML = BADGES[type].map(b => badgeHtml(type, b)).join('');
-}
+// レベル（6コマごとに1つ上がる）
+const level = Math.floor(total / 6);
+document.getElementById('lv').textContent = level;
+document.getElementById('lv-rest').textContent = fmt1((level + 1) * 6 - total);
+document.getElementById('lv-bar').style.setProperty('--p', `${(total % 6) / 6 * 100}%`);
+document.getElementById('st-total').textContent = fmt1(total);
+document.getElementById('st-streak').textContent = streak.cur;
+document.getElementById('st-best').textContent = streak.best;
+document.getElementById('st-full').textContent = fullStreak.cur;
 
-// ---- 宝箱 ----
-const CHEST_SVG = `<svg viewBox="0 0 100 88" aria-hidden="true">
-    <g class="glow"><circle cx="50" cy="40" r="30" fill="#fff6a8" opacity=".7"/><path d="M50 2v14M22 12l8 10M78 12l-8 10" stroke="#ffe066" stroke-width="4" stroke-linecap="round"/></g>
-    <rect x="12" y="40" width="76" height="42" rx="6" fill="#a0612b" stroke="#5a3214" stroke-width="3"/>
-    <rect x="12" y="52" width="76" height="6" fill="#e0b84a"/>
-    <rect x="44" y="48" width="12" height="16" rx="2" fill="#e0b84a" stroke="#7a5a12" stroke-width="2"/>
-    <g class="lid"><path d="M12 42V30c0-12 12-20 38-20s38 8 38 20v12z" fill="#b8722f" stroke="#5a3214" stroke-width="3"/><rect x="44" y="12" width="12" height="30" fill="#e0b84a"/></g>
-</svg>`;
-document.querySelectorAll('.chest-svg').forEach(el => el.innerHTML = CHEST_SVG);
+// 今日
+document.getElementById('today-title').textContent = `${md(today)}（${fmt1(todayKoma)}コマ）`;
+document.getElementById('today-next').textContent = nextTodayTier ? `${nextTodayTier.name}まで あと ${fmt1(nextTodayTier.min - todayKoma)} コマ` : '';
+const STATE = { done: ['完了', 'state--done'], run: ['実行中', 'state--run'], idle: ['未実行', ''] };
+const clock = m => { const s = Math.round(m * 60); return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+document.getElementById('komas').innerHTML = KOMAS.map((k, i) => `
+    <article class="koma is-${k.state === 'done' ? 'done' : k.state === 'run' ? 'running' : 'idle'}">
+        <div class="koma__head"><span class="koma__no">コマ ${i + 1}</span><span class="state ${STATE[k.state][1]}">${STATE[k.state][0]}</span></div>
+        <div class="koma__name">${esc(k.name || '作業内容 未入力')}</div>
+        <div class="koma__proj">${esc(k.proj || '#project/—')}</div>
+        <div class="koma__time">${clock(k.min)}</div>
+        ${k.state === 'done' ? '' : progressBar(k.min / KOMA_MIN * 100)}
+        ${k.state === 'run' ? '<div class="koma__actions"><button class="btn btn--sub">一時停止</button><button class="btn">完了</button></div>'
+          : k.state === 'idle' ? '<div class="koma__actions"><button class="btn">開始</button></div>' : ''}
+    </article>`).join('') + '<button class="add-koma">＋ コマを追加</button>';
 
+// カレンダー（色の段階はその日の実績の段階にそろえる）
+const lvOf = v => v <= 0 ? 0 : v < 3 ? 1 : v < 6 ? 2 : v < 8 ? 3 : v < 10 ? 4 : 5;
+let run = BASE_TOTAL;
+const cells = [], monthLabels = [];
+days.forEach((d, i) => {
+    const before = run; run += d.v;
+    const unlocks = [];
+    TODAY_TIERS.forEach(t => { if (d.v >= t.min && days.slice(0, i).every(p => p.v < t.min)) unlocks.push(`${t.name} 初獲得`); });
+    if (Math.floor(run / 100) > Math.floor(before / 100)) unlocks.push(`累計 ${Math.floor(run / 100) * 100} コマ`);
+    const got = TODAY_TIERS.filter(t => d.v >= t.min).map(t => t.name);
+    const isToday = i === days.length - 1;
+    tipStore.push(`<b>${md(d.date)}（${fmt1(d.v)}コマ）</b>${isToday ? ' <span class="t-dim">今日</span>' : ''}`
+        + (got.length ? `<br>${got.join('・')}` : '')
+        + (unlocks.length ? `<div class="t-next">解禁: ${unlocks.join('、')}</div>` : ''));
+    cells.push(`<div class="cal__cell${isToday ? ' is-today' : ''}${unlocks.length ? ' is-unlock' : ''}" data-lv="${lvOf(d.v)}" data-tip="${tipStore.length - 1}"></div>`);
+    if (d.date.getDay() === 0) monthLabels.push(d.date.getDate() <= 7 ? `${d.date.getMonth() + 1}月` : '');
+});
+for (let i = today.getDay() + 1; i < 7; i++) cells.push('<div class="cal__cell is-future"></div>');
+document.getElementById('cal-grid').innerHTML = cells.join('');
+document.getElementById('cal-months').innerHTML = monthLabels.map(m => `<span>${m}</span>`).join('');
+
+// 履歴
+const HISTORY = [
+    [0, 2, 'parts 作成', 'lp-noteia-14', 80], [0, 1, 'LP noteia 画像準備', 'lp-noteia-14', 92],
+    [1, 6, 'コマタイマー ログイン', 'koma-web', 81], [1, 5, '統計の編集機能', 'koma-web', 88],
+    [1, 4, 'メール返信', 'others', 34], [1, 3, 'LP noteia ワイヤー', 'lp-noteia-14', 80],
+    [2, 6, 'cron_check 整理', 'koma-web', 75], [2, 5, '請求書の整理', 'others', 80],
+    [2, 3, 'parts 作成', 'lp-noteia-14', 96], [3, 2, '確定申告の下準備', 'tax-2026', 80],
+];
+document.getElementById('history-body').innerHTML = HISTORY.map(([back, slot, name, proj, min]) => `
+    <tr><td class="date">${md(new Date(today.getTime() - back * DAY))}</td><td>コマ${slot}</td><td>${esc(name)}</td>
+    <td class="proj">#project/${esc(proj)}</td><td class="min">${min}分</td><td><button class="btn btn--sub">コピー</button></td></tr>`).join('');
+const hist = document.getElementById('history');
+document.getElementById('history-toggle').addEventListener('click', e => {
+    const closed = hist.classList.toggle('is-closed');
+    e.currentTarget.setAttribute('aria-expanded', String(!closed));
+    document.getElementById('history-icon').textContent = closed ? '▼' : '▲';
+});
+
+// 実績
+document.getElementById('achievements').innerHTML = ACH.map(g => `
+    <div class="ach-group">
+        <div class="ach-label"><span>${g.label}</span>${g.side ? `<span>${g.side}</span>` : ''}</div>
+        <div class="ach-list">${g.items.map(achHtml).join('')}</div>
+        ${g.note ? `<div class="ach-note">${g.note}</div>` : ''}
+    </div>`).join('');
+
+// お知らせ
+document.getElementById('notice-today').innerHTML = nextTodayTier
+    ? `${nextTodayTier.name}まで <b>あと ${fmt1(nextTodayTier.min - todayKoma)} コマ</b><br><span class="sub">締め切り: 今日 0:00</span>` : '今日の実績はすべて獲得しました';
+document.getElementById('notice-week').innerHTML = `ウィークリー30まで <b>あと ${fmt1(Math.max(0, 30 - weekKoma))} コマ</b><br><span class="sub">締め切り: 土曜 24:00</span>`;
+function updateRemain() {
+    const now = new Date(), mid = new Date(now); mid.setHours(24, 0, 0, 0);
+    const min = Math.floor((mid - now) / 60000);
+    document.getElementById('remain-time').textContent = `${Math.floor(min / 60)}時間${min % 60}分`;
+    document.getElementById('remain-koma').textContent = fmt1(min / KOMA_MIN);
+}
+updateRemain(); setInterval(updateRemain, 30000);
+
+// ツールチップ
+const tip = document.getElementById('tip');
+function showTip(el) {
+    tip.innerHTML = tipStore[el.dataset.tip];
+    tip.classList.add('is-show');
+    const r = el.getBoundingClientRect(), t = tip.getBoundingClientRect();
+    let x = r.left + r.width / 2 - t.width / 2, y = r.bottom + 8;
+    if (y + t.height > innerHeight - 8) y = r.top - t.height - 8;
+    tip.style.left = `${Math.max(8, Math.min(x, innerWidth - t.width - 8))}px`;
+    tip.style.top = `${y}px`;
+}
+const hideTip = () => tip.classList.remove('is-show');
+document.addEventListener('mouseover', e => { const el = e.target.closest('[data-tip]'); el ? showTip(el) : hideTip(); });
+document.addEventListener('focusin', e => { const el = e.target.closest('[data-tip]'); if (el) showTip(el); });
+document.addEventListener('focusout', hideTip);
+addEventListener('scroll', hideTip, { passive: true });
+
+// 宝箱
+const CHEST = `<svg viewBox="0 0 100 88" aria-hidden="true">
+    <rect x="12" y="40" width="76" height="42" rx="5" fill="#a0612b" stroke="#5a3214" stroke-width="3"/>
+    <rect x="12" y="52" width="76" height="6" fill="#e0b84a"/><rect x="44" y="48" width="12" height="16" rx="2" fill="#e0b84a" stroke="#7a5a12" stroke-width="2"/>
+    <g class="lid"><path d="M12 42V30c0-12 12-20 38-20s38 8 38 20v12z" fill="#b8722f" stroke="#5a3214" stroke-width="3"/><rect x="44" y="12" width="12" height="30" fill="#e0b84a"/></g></svg>`;
+document.getElementById('chest-svg').innerHTML = CHEST;
 const modal = document.getElementById('modal');
-document.querySelectorAll('.chest').forEach(chest => {
-    chest.addEventListener('click', () => {
-        if (chest.classList.contains('is-open')) return;
-        chest.classList.add('is-open');
-        setTimeout(() => {
-            const past = chest.dataset.chest === 'past';
-            const list = past
-                ? [...BADGES.period.map(b => ['period', b]), ...BADGES.total.map(b => ['total', b]), ...BADGES.streak.map(b => ['streak', b])].filter(([, b]) => !b.locked)
-                : [['period', { ...BADGES.period[0], count: 1 }]];
-            document.getElementById('modal-title').textContent = past ? 'これまでの実績をうけとった！' : 'バッジを手に入れた！';
-            document.getElementById('modal-sub').textContent = past ? '過去のデータから 23個 のバッジが見つかりました' : '今日 6コマを達成しました';
-            document.getElementById('modal-badges').innerHTML = list.map(([t, b], i) => badgeHtml(t, b, i * 80)).join('');
-            modal.classList.add('is-open');
-        }, 450);
-    });
+document.getElementById('chest').addEventListener('click', e => {
+    const chest = e.currentTarget;
+    if (chest.classList.contains('is-open')) { modal.classList.add('is-open'); return; }
+    chest.classList.add('is-open');
+    setTimeout(() => {
+        document.getElementById('modal-list').innerHTML = [ACH[0].items[0], ACH[3].items[0]].map(a => achHtml({ ...a, todayNew: false, count: 0 })).join('');
+        modal.classList.add('is-open');
+    }, 400);
 });
 document.getElementById('modal-close').addEventListener('click', () => modal.classList.remove('is-open'));
 modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('is-open'); });
 
-// ---- 0時までの残り（ここだけ本物の時計を使う） ----
-function updateRemain() {
-    const now = new Date();
-    const midnight = new Date(now); midnight.setHours(24, 0, 0, 0);
-    const min = Math.floor((midnight - now) / 60000);
-    document.getElementById('remain-time').textContent = `${Math.floor(min / 60)}時間${min % 60}分`;
-    document.getElementById('remain-koma').textContent = (min / 80).toFixed(1);
-}
-updateRemain(); setInterval(updateRemain, 30000);
-
-// ---- スキンごとの言葉づかい ----
-const WORDS = {
-    rpg:    { avatar: '🧙', rank: 'Lv.37 コマ使い', todayLabel: 'きょうのけいけんち', totalLabel: '累計コマ', komaTitle: '⚔ きょうのクエスト', badgeTitle: '🏅 しょうごう', noticeTitle: '📜 クエストログ', chestTitle: '🎁 たからばこ', emptySlot: '＋ あきコマ 5', emptySlot6: '＋ あきコマ 6' },
-    arcade: { avatar: '👾', rank: 'RANK S', todayLabel: 'TODAY', totalLabel: 'HI-SCORE', komaTitle: 'STAGE SELECT', badgeTitle: 'ACHIEVEMENTS', noticeTitle: 'STATUS', chestTitle: 'BONUS', emptySlot: 'INSERT KOMA', emptySlot6: 'INSERT KOMA' },
-    card:   { avatar: '🃏', rank: 'デッキ 742枚', todayLabel: 'きょうのドロー', totalLabel: '所持カード', komaTitle: '🂠 きょうの手札', badgeTitle: '🏆 コレクション', noticeTitle: '📋 デッキ情報', chestTitle: '🎴 パック', emptySlot: '＋ 空きスロット', emptySlot6: '＋ 空きスロット' },
-    grow:   { avatar: '🌱', rank: 'Lv.37 にわし', todayLabel: 'きょうの成長', totalLabel: '累計コマ', komaTitle: '🪴 きょうの畑', badgeTitle: '🌼 おはなバッジ', noticeTitle: '💌 おしらせ', chestTitle: '🧺 おとどけもの', emptySlot: '＋ 種をまく', emptySlot6: '＋ 種をまく' },
+// =========================================================
+// スキン（レベルの絵だけスキンごとに変える）
+// =========================================================
+const stage = Math.min(5, Math.floor(level / 30) + 1);  // 30Lv ごとに絵が1段階進む（モックでは見た目だけ）
+const VISUALS = {
+    grow: () => `<svg viewBox="0 0 96 96" aria-hidden="true">
+        <ellipse cx="48" cy="88" rx="36" ry="5" fill="#dfe8d0"/><rect x="44" y="50" width="8" height="38" rx="2" fill="#93653f"/>
+        <circle cx="48" cy="40" r="26" fill="#6fb957"/><circle cx="30" cy="52" r="14" fill="#5fa948"/><circle cx="66" cy="52" r="14" fill="#5fa948"/><circle cx="48" cy="24" r="14" fill="#86cc6c"/>
+        ${Array.from({ length: stage }, (_, i) => `<circle cx="${[36, 60, 48, 28, 68][i]}" cy="${[36, 30, 50, 54, 52][i]}" r="4.5" fill="#e9824f"/>`).join('')}</svg>`,
+    workshop: () => `<svg viewBox="0 0 96 96" aria-hidden="true">
+        <rect x="8" y="84" width="80" height="4" fill="#3a2e22"/>
+        ${Array.from({ length: stage }, (_, i) => `<rect x="${18 + i * 2}" y="${70 - i * 12}" width="${60 - i * 4}" height="12" fill="${i % 2 ? '#d29a5c' : '#b5652b'}" stroke="#3a2e22" stroke-width="2"/>`).join('')}
+        <path d="M${18 + stage * 2} ${70 - (stage - 1) * 12}L48 ${52 - (stage - 1) * 12}L${78 - stage * 2} ${70 - (stage - 1) * 12}z" fill="#3a2e22"/>
+        <rect x="42" y="74" width="12" height="10" fill="#f8f3e8" stroke="#3a2e22" stroke-width="2"/></svg>`,
+    space: () => `<svg viewBox="0 0 96 96" aria-hidden="true">
+        <circle cx="48" cy="48" r="20" fill="#4f7bff"/><circle cx="42" cy="42" r="6" fill="#9fb6ff" opacity=".6"/>
+        <ellipse cx="48" cy="48" rx="38" ry="10" fill="none" stroke="#ffb547" stroke-width="2.5" transform="rotate(-18 48 48)"/>
+        ${Array.from({ length: stage }, (_, i) => `<circle cx="${[14, 82, 76, 20, 50][i]}" cy="${[20, 18, 80, 76, 8][i]}" r="3" fill="#5ee0b5"/>`).join('')}</svg>`,
 };
 function setSkin(skin) {
     document.documentElement.dataset.skin = skin;
     document.querySelectorAll('[data-skin-btn]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.skinBtn === skin)));
-    document.querySelectorAll('[data-text]').forEach(el => { const w = WORDS[skin][el.dataset.text]; if (w) el.textContent = w; });
-    try { localStorage.setItem('komaMockSkin', skin); } catch (e) {}
+    document.getElementById('visual').innerHTML = VISUALS[skin]();
+    try { localStorage.setItem('komaMockSkinV2', skin); } catch (e) {}
 }
 document.querySelectorAll('[data-skin-btn]').forEach(b => b.addEventListener('click', () => setSkin(b.dataset.skinBtn)));
-let initial = 'rpg';
-try { initial = localStorage.getItem('komaMockSkin') || 'rpg'; } catch (e) {}
-setSkin(WORDS[initial] ? initial : 'rpg');
+let initial = 'grow';
+try { initial = localStorage.getItem('komaMockSkinV2') || 'grow'; } catch (e) {}
+setSkin(VISUALS[initial] ? initial : 'grow');
 </script>
 </body>
 </html>
