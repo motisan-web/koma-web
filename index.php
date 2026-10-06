@@ -9,6 +9,7 @@ require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/user.php';
 require_once __DIR__ . '/includes/logger.php';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/koma_stats.php';
 auth_require_page();
 
 $config      = load_config();
@@ -93,6 +94,29 @@ if (!$isEmbed) {
     $recentHistory = array_slice($recentHistory, 0, 40);
 }
 
+// Lv・連続記録・カレンダー用の集計（#T-007。コマ数の規則は koma_stats.php）
+$homeStats = null;
+if (!$isEmbed) {
+    $daily      = koma_daily_all();
+    $todayValue = $daily[$today]['koma'] ?? 0.0;
+    $calendar   = [];
+    $calStart   = new DateTime($today, $tz2);
+    $calStart->modify('-' . ((int)$calStart->format('w') + 25 * 7) . ' days');  // 26週・日曜始まり
+    foreach ($daily as $date => $d) {
+        if ($date >= $calStart->format('Y-m-d') && $date <= $today && $d['koma'] > 0) {
+            $calendar[$date] = round($d['koma'], 2);
+        }
+    }
+    $homeStats = [
+        'pastTotal'  => array_sum(array_column($daily, 'koma')) - $todayValue,
+        'streak'     => koma_streak($daily, $today, 1),
+        'fullStreak' => koma_streak($daily, $today, KOMA_DAY_TIERS[0]['min']),
+        'calStart'   => $calStart->format('Y-m-d'),
+        'calendar'   => $calendar,
+        'dayTiers'   => KOMA_DAY_TIERS,
+    ];
+}
+
 function status_label(string $status): string {
     return match($status) {
         'running'      => '実行中',
@@ -100,7 +124,7 @@ function status_label(string $status): string {
         'completed'    => '完了',
         'overtime'     => '超過中',
         'overtime_max' => '超過完了',
-        default        => '未開始',
+        default        => '未実行',
     };
 }
 
@@ -130,13 +154,27 @@ function status_class(string $status): string {
 
 <main class="page-main">
     <?php if (!$isEmbed): ?>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-            <h1 class="page-title" style="margin:0;"><?= htmlspecialchars($today) ?> のコマ</h1>
-            <span style="font-size:12px;color:var(--text-muted);">
-                <?= htmlspecialchars($currentUser['nickname']) ?>
-            </span>
+    <!-- レベル（累計6コマごとに Lv が1上がる） -->
+    <section class="panel level">
+        <div class="level__visual" id="level-visual" aria-hidden="true"></div>
+        <div class="level__body">
+            <div class="level__top">
+                <div class="level__lv"><small>Lv.</small><span id="level-lv">0</span></div>
+                <div class="level__next">次のLvまで あと <b id="level-rest">-</b> コマ</div>
+            </div>
+            <div class="meter"><div class="meter__fill" id="level-bar" style="width:0%"></div></div>
+            <div class="stat-chips">
+                <div class="stat-chip">累計<b id="stat-total">-</b>コマ</div>
+                <div class="stat-chip is-hot">連続<b><?= (int)$homeStats['streak']['current'] ?></b>日</div>
+                <div class="stat-chip">最長<b><?= (int)$homeStats['streak']['best'] ?></b>日</div>
+                <div class="stat-chip">フルデイ連続<b><?= (int)$homeStats['fullStreak']['current'] ?></b>日</div>
+            </div>
         </div>
+    </section>
     <?php endif; ?>
+
+    <section class="panel today-panel">
+    <h2 class="panel__title"><span id="today-title"><?= htmlspecialchars((new DateTime($today, $tz2))->format('n/d')) ?>（0.0コマ）</span><span class="sub" id="today-next"></span></h2>
 
     <!-- 前日の未完了コマエリア（JSで描画） -->
     <div id="prev-incomplete-area"></div>
@@ -237,14 +275,35 @@ function status_class(string $status): string {
             <span class="koma-add-btn__label">コマを追加</span>
         </button>
     </div>
+    </section>
+
+    <?php if (!$isEmbed): ?>
+    <!-- カレンダー（初期は閉じる。JSで描画） -->
+    <section class="panel fold is-closed" id="calendar-panel">
+        <button class="fold__toggle panel__title" aria-expanded="false">カレンダー<span class="sub">直近26週・日曜始まり</span><span class="fold__icon">▼</span></button>
+        <div class="fold__body">
+            <div class="cal"><div class="cal__inner">
+                <div class="cal__months" id="cal-months"></div>
+                <div class="cal__days"><span></span><span>月</span><span></span><span>水</span><span></span><span>金</span><span></span></div>
+                <div class="cal__grid" id="cal-grid"></div>
+            </div></div>
+            <div class="cal__legend">
+                <span><i data-lv="0"></i>0</span>
+                <span><i data-lv="1"></i>〜3</span>
+                <span><i data-lv="2"></i>〜6</span>
+                <span><i data-lv="3"></i>6+ フルデイ</span>
+                <span><i data-lv="4"></i>8+ オーバードライブ</span>
+                <span><i data-lv="5"></i>10+</span>
+            </div>
+        </div>
+    </section>
+    <?php endif; ?>
+
     <?php if (!$isEmbed && !empty($recentHistory)): ?>
     <!-- 履歴エリア -->
-    <div class="koma-history" id="koma-history-area">
-        <button class="koma-history__toggle" id="btn-history-toggle">
-            <span>履歴</span>
-            <span class="koma-history__toggle-icon" id="history-toggle-icon">▼</span>
-        </button>
-        <div class="koma-history__body" id="koma-history-body">
+    <section class="panel fold koma-history" id="koma-history-area">
+        <button class="fold__toggle panel__title" aria-expanded="true">履歴<span class="sub">過去14日の完了コマ</span><span class="fold__icon">▲</span></button>
+        <div class="fold__body koma-history__body">
             <table class="koma-history__table">
                 <thead>
                     <tr>
@@ -252,7 +311,7 @@ function status_class(string $status): string {
                         <th>コマ</th>
                         <th>内容</th>
                         <th>プロジェクト</th>
-                        <th>時間</th>
+                        <th class="koma-history__time">時間</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -263,18 +322,18 @@ function status_class(string $status): string {
                     <tr class="koma-history__row"
                         data-name="<?= htmlspecialchars($h['name']) ?>"
                         data-project="<?= htmlspecialchars($h['project_id']) ?>">
-                        <td class="koma-history__date"><?= htmlspecialchars($h['date']) ?></td>
+                        <td class="koma-history__date"><?= htmlspecialchars((new DateTime($h['date'], $tz2))->format('n/d')) ?></td>
                         <td class="koma-history__slot">コマ<?= $h['slot'] ?></td>
                         <td class="koma-history__name"><?= htmlspecialchars($h['name'] ?: '—') ?></td>
                         <td class="koma-history__project"><?= htmlspecialchars($h['project_id'] ?: '—') ?></td>
                         <td class="koma-history__time"><?= $min ?>分</td>
-                        <td><button class="btn btn-secondary btn-history-copy" style="padding:4px 10px;font-size:12px;">コピー</button></td>
+                        <td class="koma-history__act"><button class="btn btn-secondary btn-history-copy">コピー</button></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
     <?php endif; ?>
 </main>
 
@@ -299,6 +358,8 @@ function status_class(string $status): string {
         initialState:    <?= json_encode($session, JSON_UNESCAPED_UNICODE) ?>,
         prevIncomplete:  <?= json_encode($prevIncomplete, JSON_UNESCAPED_UNICODE) ?>,
         recentHistory:   <?= json_encode($recentHistory, JSON_UNESCAPED_UNICODE) ?>,
+        anomalyMinutes:  <?= KOMA_ANOMALY_MINUTES ?>,
+        homeStats:       <?= json_encode($homeStats, JSON_UNESCAPED_UNICODE) ?>,
     };
 </script>
 <script src="/assets/js/timer.js"></script>

@@ -44,7 +44,7 @@ const prevTicks = {};
 // --- Status helpers ---
 
 const STATUS_LABEL = {
-    idle:         '未開始',
+    idle:         '未実行',
     running:      '実行中',
     paused:       '一時停止',
     overtime:     '超過中',
@@ -178,6 +178,7 @@ function renderKoma(slot) {
     if (btnRound) {
         btnRound.style.display = (done && elapsed > CFG.maxDurationSec) ? '' : 'none';
     }
+    updateSummary();
 }
 
 function startTick(slot) {
@@ -542,7 +543,7 @@ function buildKomaCard(slot) {
     div.innerHTML = `
         <div class="koma-card__header">
             <span class="koma-card__slot">コマ ${slot}</span>
-            <span class="koma-card__status-badge idle" id="koma-status-${slot}">未開始</span>
+            <span class="koma-card__status-badge idle" id="koma-status-${slot}">未実行</span>
         </div>
         <input type="text" class="koma-card__name-input"
                id="koma-name-${slot}" placeholder="作業内容" value=""
@@ -711,7 +712,7 @@ function findFirstIdleSlot() {
     for (let slot = 1; slot <= CFG.komaCount; slot++) {
         const k = komaState[slot];
         if (k && k.status !== 'idle') continue;
-        // 未開始でも作業内容・プロジェクトが入っていれば空きではない（保存前の入力欄も見る）
+        // 未実行でも作業内容・プロジェクトが入っていれば空きではない（保存前の入力欄も見る）
         const name    = (k?.name ?? '') + (document.getElementById(`koma-name-${slot}`)?.value ?? '');
         const project = (k?.project_id ?? '') + (document.getElementById(`koma-project-${slot}`)?.value ?? '');
         if (name.trim() === '' && project.trim() === '') return slot;
@@ -735,18 +736,6 @@ function copyHistoryEntry(name, projectId) {
 }
 
 function initHistoryEvents() {
-    // Toggle open/close
-    const toggleBtn = document.getElementById('btn-history-toggle');
-    const body      = document.getElementById('koma-history-body');
-    const icon      = document.getElementById('history-toggle-icon');
-    if (toggleBtn && body) {
-        toggleBtn.addEventListener('click', () => {
-            const isOpen = body.style.display !== 'none';
-            body.style.display  = isOpen ? 'none' : '';
-            icon.textContent    = isOpen ? '▶' : '▼';
-        });
-    }
-
     // Copy buttons
     document.querySelectorAll('.btn-history-copy').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -761,6 +750,131 @@ function initHistoryEvents() {
 }
 
 // ================================================================
+// SUMMARY（今日のコマ数・Lv。コマ数の規則は includes/koma_stats.php と同じ）
+// ================================================================
+
+const KOMA_UNIT_SEC  = 80 * 60;
+const KOMA_SHORT_SEC = 20 * 60;
+const DAY_TIERS = CFG.homeStats?.dayTiers ?? [{ min: 6, name: 'フルデイ' }];
+
+function fmt1(n) { return (Math.round(n * 10) / 10).toFixed(1); }
+
+function komaValue(k) {
+    if (!k || !k.segments) return 0;
+    const done = isDone(k.status);
+    const sec  = done ? (k.total_seconds ?? 0) : liveElapsed(k);
+    if (sec <= 0) return 0;
+    if (done && sec >= CFG.anomalyMinutes * 60) return 0;
+    return (done && sec > KOMA_SHORT_SEC && sec < KOMA_UNIT_SEC ? KOMA_UNIT_SEC : sec) / KOMA_UNIT_SEC;
+}
+
+function todayKoma() {
+    return Object.values(komaState).reduce((sum, k) => sum + komaValue(k), 0);
+}
+
+function updateSummary() {
+    const today = todayKoma();
+    const [, m, d] = CFG.today.split('-').map(Number);
+    const title = document.getElementById('today-title');
+    if (title) title.textContent = `${m}/${String(d).padStart(2, '0')}（${fmt1(today)}コマ）`;
+    const next = DAY_TIERS.find(t => today < t.min);
+    const nextEl = document.getElementById('today-next');
+    if (nextEl) nextEl.textContent = next ? `${next.name}まで あと ${fmt1(next.min - today)} コマ` : '';
+
+    const st = CFG.homeStats;
+    if (!st) return;
+    const total = st.pastTotal + today;
+    const lv    = Math.floor(total / 6);
+    document.getElementById('level-lv').textContent   = lv;
+    document.getElementById('level-rest').textContent = fmt1((lv + 1) * 6 - total);
+    document.getElementById('level-bar').style.width  = `${(total % 6) / 6 * 100}%`;
+    document.getElementById('stat-total').textContent = fmt1(total);
+    renderLevelVisual(lv);
+}
+
+// Lv の絵: 30Lv ごとに実が1つ増える（最大5つ）
+let _visualStage = -1;
+function renderLevelVisual(lv) {
+    const el = document.getElementById('level-visual');
+    const stage = Math.min(5, Math.floor(lv / 30) + 1);
+    if (!el || stage === _visualStage) return;
+    _visualStage = stage;
+    const fruits = [[36, 36], [60, 30], [48, 50], [28, 54], [68, 52]].slice(0, stage)
+        .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4.5" class="lv-fruit"/>`).join('');
+    el.innerHTML = `<svg viewBox="0 0 96 96">
+        <ellipse cx="48" cy="88" rx="36" ry="5" class="lv-ground"/><rect x="44" y="50" width="8" height="38" rx="2" class="lv-trunk"/>
+        <circle cx="48" cy="40" r="26" class="lv-leaf"/><circle cx="30" cy="52" r="14" class="lv-leaf2"/><circle cx="66" cy="52" r="14" class="lv-leaf2"/>
+        <circle cx="48" cy="24" r="14" class="lv-leaf3"/>${fruits}</svg>`;
+}
+
+// ================================================================
+// CALENDAR（直近26週。色の段階は今日の実績の段階にそろえる）
+// ================================================================
+
+function calendarLevel(v) {
+    return v <= 0 ? 0 : v < 3 ? 1 : v < 6 ? 2 : v < 8 ? 3 : v < 10 ? 4 : 5;
+}
+
+function renderCalendar() {
+    const st   = CFG.homeStats;
+    const grid = document.getElementById('cal-grid');
+    if (!st || !grid || grid.childElementCount) return;
+    const cells = [], months = [];
+    const day   = new Date(`${st.calStart}T00:00:00`);
+    const end   = new Date(`${CFG.today}T00:00:00`);
+    for (; day <= end; day.setDate(day.getDate() + 1)) {
+        const ymd = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+        const isToday = ymd === CFG.today;
+        const v = isToday ? todayKoma() : (st.calendar[ymd] ?? 0);
+        const got = DAY_TIERS.filter(t => v >= t.min).map(t => t.name);
+        const tip = `<b>${day.getMonth() + 1}/${String(day.getDate()).padStart(2, '0')}（${fmt1(v)}コマ）</b>`
+            + (isToday ? ' <span class="tip__dim">今日</span>' : '') + (got.length ? `<br>${got.join('・')}` : '');
+        cells.push(`<div class="cal__cell${isToday ? ' is-today' : ''}" data-lv="${calendarLevel(v)}" data-tip="${escHtml(tip)}"></div>`);
+        if (day.getDay() === 0) months.push(day.getDate() <= 7 ? `${day.getMonth() + 1}月` : '');
+    }
+    grid.innerHTML = cells.join('');
+    document.getElementById('cal-months').innerHTML = months.map(m => `<span>${m}</span>`).join('');
+}
+
+// ================================================================
+// FOLD（カレンダー・履歴の開け閉め）と TOOLTIP
+// ================================================================
+
+function initFolds() {
+    document.querySelectorAll('.fold__toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const fold   = btn.closest('.fold');
+            const closed = fold.classList.toggle('is-closed');
+            btn.setAttribute('aria-expanded', String(!closed));
+            btn.querySelector('.fold__icon').textContent = closed ? '▼' : '▲';
+            if (!closed && fold.id === 'calendar-panel') renderCalendar();
+        });
+    });
+}
+
+// data-tip に入れた HTML をマウスオーバー・フォーカスで出す（中身はこのファイルが組み立てたものだけ）
+function initTooltip() {
+    const tip = document.createElement('div');
+    tip.className = 'tip';
+    tip.setAttribute('role', 'tooltip');
+    document.body.appendChild(tip);
+    const show = el => {
+        tip.innerHTML = el.dataset.tip;
+        tip.classList.add('is-show');
+        const r = el.getBoundingClientRect(), t = tip.getBoundingClientRect();
+        let y = r.bottom + 8;
+        if (y + t.height > innerHeight - 8) y = r.top - t.height - 8;
+        tip.style.left = `${Math.max(8, Math.min(r.left + r.width / 2 - t.width / 2, innerWidth - t.width - 8))}px`;
+        tip.style.top  = `${y}px`;
+    };
+    const hide = () => tip.classList.remove('is-show');
+    document.addEventListener('mouseover', e => { const el = e.target.closest('[data-tip]'); el ? show(el) : hide(); });
+    document.addEventListener('focusin', e => { const el = e.target.closest('[data-tip]'); if (el) show(el); });
+    document.addEventListener('focusout', hide);
+    addEventListener('scroll', hide, { passive: true });
+}
+
+// ================================================================
 // BOOT
 // ================================================================
 
@@ -769,6 +883,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initPrevIncomplete(CFG.prevIncomplete);
     bindEvents();
     initHistoryEvents();
+    initFolds();
+    initTooltip();
+    updateSummary();
 
     const addBtn = document.getElementById('btn-add-koma');
     if (addBtn) addBtn.addEventListener('click', addKoma);

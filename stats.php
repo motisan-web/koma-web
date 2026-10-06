@@ -266,7 +266,7 @@ function fmt_min(int $sec): string {
                     'paused'       => '停止中',
                     'closed'       => '中止',
                     'auto_closed'  => '自動中止',
-                    default        => '未開始',
+                    default        => '未実行',
                 };
             ?>
                 <?php $anomaly = koma_is_anomaly($k); $editable = koma_is_done($k) && $status !== 'overtime_max'; ?>
