@@ -2,6 +2,7 @@
 require_once __DIR__ . '/includes/data.php';
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/user.php';
+require_once __DIR__ . '/includes/koma_stats.php';
 require_once __DIR__ . '/includes/auth.php';
 auth_require_page();
 
@@ -59,6 +60,9 @@ function load_sessions_range(string $from, string $to): array {
     }
     return $sessions;
 }
+
+// --- 異常値（全期間）---
+$anomalies = find_anomaly_komas();
 
 // --- Tab / date selection ---
 $tab = $_GET['tab'] ?? 'day';
@@ -151,6 +155,23 @@ function fmt_min(int $sec): string {
 <main class="page-main">
     <h1 class="page-title">統計</h1>
 
+    <?php if (!empty($anomalies)): ?>
+    <div class="notice notice-error anomaly-list">
+        <strong>⚠ 異常値のコマが <?= count($anomalies) ?> 件あります</strong>（<?= KOMA_ANOMALY_MINUTES ?>分以上。放置していた場合は時間を直してください）
+        <ul>
+            <?php foreach ($anomalies as $a): ?>
+                <li>
+                    <a href="?tab=day&date=<?= urlencode($a['date']) ?>#koma-row-<?= (int)$a['koma']['id'] ?>">
+                        <?= htmlspecialchars($a['date']) ?> コマ<?= (int)$a['koma']['id'] ?>
+                    </a>
+                    — <?= htmlspecialchars($a['koma']['name'] ?: '(内容なし)') ?>
+                    （<?= fmt_min((int)$a['koma']['total_seconds']) ?>）
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php endif; ?>
+
     <!-- Tabs -->
     <div class="page-tabs">
         <?php foreach (['day' => '日別', 'week' => '週別', 'month' => '月別', 'project' => 'プロジェクト別'] as $t => $l): ?>
@@ -223,7 +244,7 @@ function fmt_min(int $sec): string {
             <thead>
                 <tr>
                     <th>#</th><th>内容</th><th>プロジェクト</th>
-                    <th>実時間</th><th>超過</th><th>状態</th>
+                    <th>実時間</th><th>超過</th><th>状態</th><th></th>
                 </tr>
             </thead>
             <tbody>
@@ -248,14 +269,38 @@ function fmt_min(int $sec): string {
                     default        => '未開始',
                 };
             ?>
-                <tr>
+                <?php $anomaly = koma_is_anomaly($k); $editable = koma_is_done($k) && $status !== 'overtime_max'; ?>
+                <tr id="koma-row-<?= (int)$k['id'] ?>" class="<?= $anomaly ? 'is-anomaly' : '' ?>">
                     <td style="color:var(--text-muted);">コマ<?= (int)$k['id'] ?></td>
                     <td><?= htmlspecialchars($k['name'] ?: '—') ?></td>
                     <td style="font-size:12px;color:var(--text-muted);"><?= htmlspecialchars($k['project_id'] ?: '—') ?></td>
-                    <td><?= fmt_min($sec) ?></td>
+                    <td>
+                        <?= fmt_min($sec) ?>
+                        <?php if ($anomaly): ?><span class="badge badge-red">異常値・要編集</span><?php endif; ?>
+                        <?php if (!empty($k['edited_at'])): ?><span class="badge badge-muted" title="元の時間: <?= fmt_min((int)($k['original_total_seconds'] ?? 0)) ?>">編集済み</span><?php endif; ?>
+                    </td>
                     <td><?= $overSec > 0 ? '<span class="badge badge-orange">+' . fmt_min($overSec) . '</span>' : '—' ?></td>
                     <td><span class="badge <?= $badgeCls ?>"><?= $statusLbl ?></span></td>
+                    <td>
+                        <?php if ($editable): ?>
+                            <button type="button" class="btn-secondary btn-edit-koma" style="font-size:12px;" data-slot="<?= (int)$k['id'] ?>">編集</button>
+                        <?php endif; ?>
+                    </td>
                 </tr>
+                <?php if ($editable): ?>
+                <tr class="koma-edit-row" id="koma-edit-<?= (int)$k['id'] ?>" hidden>
+                    <td colspan="7">
+                        <form class="koma-edit-form" data-slot="<?= (int)$k['id'] ?>">
+                            <label>時間（分）<input type="number" name="total_minutes" min="0" max="<?= KOMA_ANOMALY_MINUTES - 1 ?>" step="1" required value="<?= intdiv($sec, 60) ?>"></label>
+                            <label>内容<input type="text" name="name" maxlength="200" value="<?= htmlspecialchars($k['name'] ?? '') ?>"></label>
+                            <label>プロジェクト<input type="text" name="project_id" maxlength="100" value="<?= htmlspecialchars($k['project_id'] ?? '') ?>"></label>
+                            <button type="submit" class="btn btn-complete" style="font-size:12px;">保存</button>
+                            <button type="button" class="btn-secondary btn-edit-cancel" style="font-size:12px;">キャンセル</button>
+                            <span class="koma-edit-error"></span>
+                        </form>
+                    </td>
+                </tr>
+                <?php endif; ?>
             <?php endforeach; ?>
             </tbody>
         </table>
@@ -366,6 +411,47 @@ function fmt_min(int $sec): string {
 
 <?php include __DIR__ . '/includes/footer.php'; ?>
 
+<?php if ($tab === "day"): ?>
+<script>
+// 完了コマの事後編集（#T-002）
+(() => {
+    const date = <?= json_encode($selDate) ?>;
+    document.querySelectorAll(".btn-edit-koma").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const row = document.getElementById(`koma-edit-${btn.dataset.slot}`);
+            row.hidden = !row.hidden;
+        });
+    });
+    document.querySelectorAll(".btn-edit-cancel").forEach(btn => {
+        btn.addEventListener("click", () => { btn.closest(".koma-edit-row").hidden = true; });
+    });
+    document.querySelectorAll(".koma-edit-form").forEach(form => {
+        form.addEventListener("submit", async e => {
+            e.preventDefault();
+            const err = form.querySelector(".koma-edit-error");
+            err.textContent = "";
+            const res = await fetch("/api/timer.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "edit_koma",
+                    date,
+                    slot: +form.dataset.slot,
+                    total_minutes: +form.elements.namedItem("total_minutes").value,
+                    name: form.elements.namedItem("name").value,
+                    project_id: form.elements.namedItem("project_id").value,
+                }),
+            }).then(r => r.json()).catch(() => ({ ok: false, error: "通信に失敗しました" }));
+            if (res.ok) {
+                location.reload();
+            } else {
+                err.textContent = res.error || "保存に失敗しました";
+            }
+        });
+    });
+})();
+</script>
+<?php endif; ?>
 <?php if ($tab === 'day' && !empty($komas)): ?>
 <script>
 (async () => {

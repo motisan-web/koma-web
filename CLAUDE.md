@@ -28,6 +28,7 @@
 │   ├── header.php / footer.php
 │   ├── config.php    # 設定ローダー
 │   ├── auth.php      # ログイン（ローカルは不要）
+│   ├── koma_stats.php # コマの集計ルール・異常値判定
 │   ├── hook.php      # Hook 送信の共通関数
 │   ├── data.php      # JSON読み書き（ファイルロック付き）
 │   ├── user.php      # ユーザーコンテキスト

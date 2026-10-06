@@ -9,6 +9,7 @@
 - `set_theme` / `get_state` は slot バリデーション前に処理する（slot 不要なアクション）。
 - `reset` アクションは `segments` が空のコマ専用。開始済みコマには適用不可。
 - `round_to_100min` アクションは完了済み + 100分超過コマのみ対象。
+- `edit_koma` アクション（統計の日別表示から呼ぶ）は完了扱いのコマ（completed / closed / auto_closed）のみ対象。時間は合計分数（0〜999の整数）で受け取り、`total_seconds` と `overtime_seconds` を書き換える。segments は変えない。最初の編集時だけ元の値を `original_total_seconds` に残し、`edited_at` を記録する。
 - `set_slot_count` は JS から `CFG.today` を受け取る（深夜をまたいだとき翌日に書き込まないため）。
 
 ## Hook
@@ -20,6 +21,7 @@
   - `overtime_max` は廃止（既存データの互換性のためステータス定義は残る）。
   - 100分自動完了は廃止済み。100分経過時は `koma_100min` hook の発火のみ（cron_check.php も状態を変えない）。
 - `closed`・`auto_closed` は統計・マークダウン出力でも「完了扱い」（チェックボックス `[x]`）。
+- 完了扱いで `total_seconds` が1000分以上のコマは異常値（`includes/koma_stats.php` の `KOMA_ANOMALY_MINUTES`）。統計画面の全タブ上部に全期間の一覧を出し、日別表示で行を強調する。集計ルールは今後 `includes/koma_stats.php` に集める。
 - `break_notify` hook はコマ完了時に即発火（「10分後に叩く」遅延は hook 受け取り側で実装する想定）。
 - project_id 履歴は datalist 補完のみ（サーバーサイド fetch 補完なし）。
 - JSON エンコードは `JSON_UNESCAPED_UNICODE` で統一。

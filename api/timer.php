@@ -10,6 +10,7 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/user.php';
 require_once __DIR__ . '/../includes/logger.php';
 require_once __DIR__ . '/../includes/hook.php';
+require_once __DIR__ . '/../includes/koma_stats.php';
 require_once __DIR__ . '/../includes/auth.php';
 auth_require_api();
 
@@ -403,6 +404,34 @@ switch ($action) {
 
         $k['total_seconds']    = $max_duration;
         $k['overtime_seconds'] = max(0, $max_duration - $koma_duration);
+
+        save_session($session);
+        api_ok(['koma' => $k, 'date' => $target_date]);
+
+    case 'edit_koma':
+        // 統計画面からの事後編集（#T-002）。完了扱いのコマだけ。時間は合計分数で直す
+        if ($idx === -1) api_error('コマが見つかりません');
+        $k = &$session['koma'][$idx];
+        if (!in_array($k['status'], ['completed', 'closed', 'auto_closed'])) {
+            api_error('完了済みのコマだけ編集できます');
+        }
+        $minutes = $req['total_minutes'] ?? null;
+        if (!is_numeric($minutes) || (int)$minutes != $minutes || $minutes < 0 || $minutes >= KOMA_ANOMALY_MINUTES) {
+            api_error('時間は0〜' . (KOMA_ANOMALY_MINUTES - 1) . '分の整数で入力してください');
+        }
+
+        // 最初の編集のときだけ元の値を残す（間違えて直したときに戻せるように）
+        if (!array_key_exists('original_total_seconds', $k)) {
+            $k['original_total_seconds'] = (int)$k['total_seconds'];
+        }
+        $k['total_seconds']    = (int)$minutes * 60;
+        $k['overtime_seconds'] = max(0, $k['total_seconds'] - $koma_duration);
+        if (isset($req['name']))       $k['name']       = mb_substr(trim($req['name']), 0, 200);
+        if (isset($req['project_id'])) {
+            $k['project_id'] = mb_substr(trim($req['project_id']), 0, 100);
+            if ($k['project_id'] !== '') push_project_history($k['project_id']);
+        }
+        $k['edited_at'] = now_iso();
 
         save_session($session);
         api_ok(['koma' => $k, 'date' => $target_date]);
