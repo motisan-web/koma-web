@@ -9,7 +9,7 @@
 
 ## 公開範囲
 - `.htaccess` の `RedirectMatch 404` で、`data/`・`logs/`・ドットフォルダ（`.git` `.github` `.claude` `.claude-codex` `.ai-docs`）・
-  `.md` `.log` `.yml` などを HTTP から見えなくしている。PHP はファイルシステム経由で読むので影響しない。
+  `.md` `.log` `.yml` `.pj` などを HTTP から見えなくしている。PHP はファイルシステム経由で読むので影響しない。
 - `deploy.yml` の `exclude` でドキュメント類を送らない。ただし FTP 同期は除外したファイルを本番から削除しないため、
   既にある古いファイルは `.htaccess` 側で守る。遮断ルールは削らないこと。
 - 新しく公開したくないファイル・フォルダを足したら、`.htaccess` と `exclude` の両方を直し、ローカルで 404 を確認する。
@@ -24,3 +24,6 @@
 - ローカル判定は「REMOTE_ADDR がループバック」かつ「ホスト名が .local / localhost」。CLI（cron）も認証なしで動く。
 - セッションは `data/php_sessions/` に保存し、30日有効。Cookie は HttpOnly・SameSite=Lax（Lax なのでフォーム POST の CSRF は Cookie が送られず防げる。login.php のフォームは念のためトークンも確認）。
 - 5回続けて失敗すると、そのアカウントを15分ロックする。パスワードを忘れたら `data/auth.json` をサーバー上で消すと初回登録からやり直せる。
+
+## プロジェクトの目印
+- ルートの `koma-web@koma-web.local.pj` は、ローカルでプロジェクトを探すための検索用マーカー（中身は空）。`.htaccess` で `.pj` を 404 にしているので、本番に送られても見えない。
