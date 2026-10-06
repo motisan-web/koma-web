@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="ja" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>統計モック — コマタイマー</title>
+<!-- T-006: 統計画面の作り直し案（ローカル専用・データはすべてサンプル） -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* 育成（改）の配色。グラフのプロジェクト色は検証済みのカテゴリ配色（上位5件＋その他） */
+:root {
+    --bg: #f2f5ec; --card: #fff; --soft: #eef3e6; --input: #f4f7ef; --border: #e2e9d6;
+    --text: #34402d; --muted: #7d8a73; --dim: #a9b39f;
+    --accent: #4f9e3c; --on-accent: #fff; --highlight: #e9824f; --good: #3f8a30; --bad: #d4502b;
+    --grid: #e9eee1; --axis: #c9d3bd;
+    --seq0: #e9eee1; --seq1: #cfe6bd; --seq2: #9fd17f; --seq3: #5fae45; --seq4: #3b852b; --seq5: #24601a;
+    --p1: #2a78d6; --p2: #eb6834; --p3: #1baf7a; --p4: #eda100; --p5: #e87ba4; --p-other: #b5bdab; --prev: #b5bdab;
+    --tip-bg: #2f3a29; --tip-text: #f4f8ee;
+    --shadow: 0 2px 8px rgba(63,122,48,.07);
+}
+[data-theme="dark"] {
+    --bg: #161b14; --card: #1f261c; --soft: #2a3326; --input: #283124; --border: #333e2e;
+    --text: #e4ebdc; --muted: #9aa891; --dim: #5f6b57;
+    --accent: #7cc561; --on-accent: #142010; --highlight: #f0956a; --good: #7cc561; --bad: #f08a7a;
+    --grid: #2a3326; --axis: #3e4a38;
+    --seq0: #252d21; --seq1: #2f4a27; --seq2: #3f7a30; --seq3: #5fae45; --seq4: #8fd36f; --seq5: #c4ecaa;
+    --p1: #3987e5; --p2: #d95926; --p3: #199e70; --p4: #c98500; --p5: #d55181; --p-other: #5f6b57; --prev: #6b7862;
+    --tip-bg: #e4ebdc; --tip-text: #1f261c;
+    --shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: "Zen Kaku Gothic New", system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.num { font-variant-numeric: tabular-nums; }
+
+.switcher { position: sticky; top: 0; z-index: 50; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 10px 16px; background: #111; color: #eee; font-family: system-ui, sans-serif; font-size: 13px; }
+.switcher button { background: #2a2a2a; border: 1px solid #444; border-radius: 6px; padding: 5px 12px; color: #eee; }
+.switcher a { color: #9cf; }
+.switcher .note { margin-left: auto; opacity: .6; }
+
+.wrap { max-width: 1160px; margin: 0 auto; padding: 20px 16px 60px; }
+h1 { font-size: 18px; margin-bottom: 14px; }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; overflow-x: auto; overflow-y: hidden; }
+.tab { all: unset; cursor: pointer; padding: 8px 16px; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
+.tab:hover { color: var(--text); }
+.tab .new { font-size: 10px; color: var(--highlight); margin-left: 4px; }
+.view[hidden] { display: none; }
+
+.panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); padding: 16px; margin-bottom: 18px; }
+.panel__title { font-size: 15px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.panel__title .sub { font-size: 12px; font-weight: 500; color: var(--muted); }
+.panel__lead { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+.idea { font-size: 11px; color: var(--highlight); background: color-mix(in srgb, var(--highlight) 10%, transparent); border-radius: 6px; padding: 6px 10px; margin-bottom: 18px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.grid2 > .panel { margin-bottom: 0; }
+.grid2 + .panel, .grid2 + .grid2 { margin-top: 18px; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* 期間の切り替え */
+.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.seg { display: inline-flex; background: var(--soft); border-radius: 8px; padding: 3px; }
+.seg button { border: 0; background: transparent; padding: 5px 14px; border-radius: 6px; font-size: 13px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--text); font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.nav-btn { border: 1px solid var(--border); background: var(--card); border-radius: 6px; padding: 5px 12px; font-size: 13px; }
+.nav-btn:disabled { opacity: .4; cursor: default; }
+.range-label { font-weight: 700; font-size: 15px; }
+
+/* 数字のタイル */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.tile { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; box-shadow: var(--shadow); }
+.tile__label { font-size: 11px; color: var(--muted); }
+.tile__value { font-size: 26px; font-weight: 900; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.tile__value small { font-size: 13px; font-weight: 500; margin-left: 2px; color: var(--muted); }
+.tile__delta { font-size: 11px; color: var(--muted); }
+.tile__delta.up { color: var(--good); }
+.tile__delta.down { color: var(--bad); }
+.tile__sub { font-size: 11px; color: var(--muted); }
+
+/* グラフ共通 */
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart text { fill: var(--muted); font-size: 11px; font-family: inherit; }
+.chart .grid { stroke: var(--grid); stroke-width: 1; }
+.chart .axis { stroke: var(--axis); stroke-width: 1; }
+.chart .ref { stroke: var(--highlight); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.chart text.ref-label { fill: var(--highlight); font-weight: 700; }
+.chart .hit { fill: transparent; }
+.chart .hit:hover { fill: color-mix(in srgb, var(--text) 6%, transparent); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.legend i.line { height: 2px; border-radius: 1px; vertical-align: 3px; width: 14px; }
+.legend i.dash { height: 0; border-top: 2px dashed var(--prev); background: none !important; vertical-align: 3px; width: 14px; }
+
+/* 横棒の一覧（プロジェクト・曜日など） */
+.hbars { display: grid; gap: 8px; }
+.hbar { display: grid; grid-template-columns: 120px minmax(0, 1fr) 90px; gap: 10px; align-items: center; font-size: 13px; }
+.hbar__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar__name i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.hbar__track { height: 10px; background: var(--input); border-radius: 4px; overflow: hidden; }
+.hbar__fill { height: 100%; border-radius: 4px; }
+.hbar__val { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12px; }
+.hbar__val b { color: var(--text); font-size: 13px; }
+
+/* ヒートマップ（曜日×時刻） */
+.heat { display: grid; grid-template-columns: 24px repeat(24, minmax(0, 1fr)); gap: 3px; font-size: 10px; color: var(--muted); }
+.heat__cell { aspect-ratio: 1; border-radius: 3px; }
+:where(.heat__cell, .year__cell, .seq-legend i) { background: var(--seq0); }
+.heat__day { line-height: 1; align-self: center; }
+.heat__hour { text-align: center; }
+[data-q="1"] { background: var(--seq1); } [data-q="2"] { background: var(--seq2); } [data-q="3"] { background: var(--seq3); }
+[data-q="4"] { background: var(--seq4); } [data-q="5"] { background: var(--seq5); }
+.seq-legend { display: flex; gap: 4px; align-items: center; font-size: 11px; color: var(--muted); margin-top: 10px; }
+.seq-legend i { width: 12px; height: 12px; border-radius: 3px; }
+
+/* 年間カレンダー */
+.year { overflow-x: auto; }
+.year__grid { display: grid; grid-template-rows: repeat(7, 11px); grid-auto-flow: column; grid-auto-columns: 11px; gap: 3px; }
+.year__cell { border-radius: 2px; }
+.year__months { display: grid; grid-auto-flow: column; grid-auto-columns: 11px; gap: 3px; font-size: 10px; color: var(--muted); height: 14px; }
+.year__months span { white-space: nowrap; }
+
+/* 自己ベスト */
+.bests { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.best { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: grid; grid-template-columns: 36px 1fr; gap: 2px 10px; align-items: center; }
+.best__ico { grid-row: span 3; font-size: 26px; text-align: center; }
+.best__label { font-size: 11px; color: var(--muted); }
+.best__value { font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.best__when { font-size: 11px; color: var(--muted); }
+
+/* 表 */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-size: 11px; font-weight: 500; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: 0; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+.mini-meter { display: inline-block; width: 70px; height: 6px; background: var(--input); border-radius: 3px; overflow: hidden; vertical-align: middle; margin-right: 6px; }
+.mini-meter span { display: block; height: 100%; background: var(--accent); }
+details summary { cursor: pointer; font-size: 13px; color: var(--muted); margin-top: 10px; }
+details table { margin-top: 8px; }
+
+.day-note { color: var(--muted); font-size: 13px; }
+
+.tip { position: fixed; z-index: 200; pointer-events: none; max-width: 280px; background: var(--tip-bg); color: var(--tip-text); border-radius: 8px; padding: 9px 12px; font-size: 12px; line-height: 1.55; box-shadow: 0 8px 24px rgba(0,0,0,.25); opacity: 0; transform: translateY(4px); transition: opacity .1s, transform .1s; }
+.tip.is-show { opacity: 1; transform: none; }
+.tip b { font-size: 13px; }
+.tip i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+.tip .row { display: flex; justify-content: space-between; gap: 14px; }
+</style>
+</head>
+<body>
+
+<div class="switcher">
+    <strong>統計モック</strong>
+    <button id="theme-btn">ダーク / ライト切り替え</button>
+    <a href="./">トップのモックへ</a>
+    <span class="note">データはすべてサンプル（約1年分を乱数で作成）。グラフはマウスオーバーで詳細が出ます</span>
+</div>
+
+<div class="wrap">
+    <h1>統計</h1>
+    <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-tab="day">日別</button>
+        <button class="tab" role="tab" data-tab="period">期間<span class="new">改</span></button>
+        <button class="tab" role="tab" data-tab="project">プロジェクト<span class="new">改</span></button>
+        <button class="tab" role="tab" data-tab="rhythm">時間帯<span class="new">新</span></button>
+        <button class="tab" role="tab" data-tab="focus">集中度<span class="new">新</span></button>
+        <button class="tab" role="tab" data-tab="records">記録<span class="new">新</span></button>
+    </div>
+
+    <!-- ===== 日別（今のまま） ===== -->
+    <section class="view" data-view="day">
+        <div class="panel">
+            <div class="panel__title">日別</div>
+            <p class="day-note">日別のサマリー・コマ一覧・事後編集・マークダウン出力は今の画面のまま残し、見た目だけトップ（育成（改））にそろえます。<br>「完了コマ数」はトップと同じ数え方（分数 ÷ 80、短い完了は80分扱い）の小数表示にそろえる案です。</p>
+        </div>
+    </section>
+
+    <!-- ===== 期間（週・月） ===== -->
+    <section class="view" data-view="period">
+        <div class="idea">今の「週別」「月別」を1つにまとめ、前の期間との比べ・ペース・プロジェクトの内訳を足す案</div>
+        <div class="toolbar">
+            <div class="seg" role="group" aria-label="期間の単位">
+                <button data-unit="week" aria-pressed="true">週</button>
+                <button data-unit="month" aria-pressed="false">月</button>
+            </div>
+            <button class="nav-btn" id="period-prev">‹ 前</button>
+            <span class="range-label" id="period-label"></span>
+            <button class="nav-btn" id="period-next">次 ›</button>
+        </div>
+        <div class="tiles" id="period-tiles"></div>
+        <div class="panel">
+            <div class="panel__title">日別のコマ数<span class="sub">色はプロジェクト・点線はフルデイ（6コマ）</span></div>
+            <div class="chart" id="period-bars"></div>
+            <div class="legend" id="period-legend"></div>
+        </div>
+        <div class="grid2">
+            <div class="panel">
+                <div class="panel__title">ペース<span class="sub">累計コマ数を前の期間と比べる</span></div>
+                <div class="chart" id="period-pace"></div>
+                <div class="legend"><span><i class="line" style="background:var(--p1)"></i>この期間</span><span><i class="dash"></i>前の期間</span></div>
+            </div>
+            <div class="panel">
+                <div class="panel__title">プロジェクトの内訳</div>
+                <div class="hbars" id="period-projects"></div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel__title">曜日ごとの平均<span class="sub">この期間・稼働した日だけ</span></div>
+            <div class="hbars" id="period-weekday"></div>
+            <details><summary>日別の表を見る</summary><table id="period-table"></table></details>
+        </div>
+    </section>
+
+    <!-- ===== プロジェクト ===== -->
+    <section class="view" data-view="project">
+        <div class="idea">今の「累計時間の表」に、割合・週ごとの推移・最後に触った日・職人の進捗を足す案</div>
+        <div class="toolbar">
+            <div class="seg" role="group" aria-label="集計する期間">
+                <button data-prange="30" aria-pressed="true">30日</button>
+                <button data-prange="90" aria-pressed="false">90日</button>
+                <button data-prange="all" aria-pressed="false">全期間</button>
+            </div>
+        </div>
+        <div class="grid2">
+            <div class="panel">
+                <div class="panel__title">割合<span class="sub" id="proj-total"></span></div>
+                <div class="hbars" id="proj-share"></div>
+            </div>
+            <div class="panel">
+                <div class="panel__title">週ごとの推移<span class="sub">直近12週・上位5件＋その他</span></div>
+                <div class="chart" id="proj-weekly"></div>
+                <div class="legend" id="proj-legend"></div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel__title">一覧</div>
+            <table id="proj-table"></table>
+        </div>
+    </section>
+
+    <!-- ===== 時間帯 ===== -->
+    <section class="view" data-view="rhythm">
+        <div class="idea">セグメント（開始〜停止の記録）から「いつ作業しているか」を出す。今は使っていないデータ</div>
+        <div class="tiles" id="rhythm-tiles"></div>
+        <div class="panel">
+            <div class="panel__title">曜日 × 時刻<span class="sub">直近8週・作業していた分数の合計</span></div>
+            <div class="heat" id="heat"></div>
+            <div class="seq-legend">少ない <i></i><i data-q="1"></i><i data-q="2"></i><i data-q="3"></i><i data-q="4"></i><i data-q="5"></i> 多い</div>
+        </div>
+        <div class="panel">
+            <div class="panel__title">始業と終業<span class="sub">直近30日・最初のコマの開始〜最後のコマの終了</span></div>
+            <div class="chart" id="rhythm-range"></div>
+        </div>
+    </section>
+
+    <!-- ===== 集中度 ===== -->
+    <section class="view" data-view="focus">
+        <div class="idea">コマの長さ・一時停止の回数から「80分をどれだけ守れているか」を見る</div>
+        <div class="tiles" id="focus-tiles"></div>
+        <div class="grid2">
+            <div class="panel">
+                <div class="panel__title">コマの長さ<span class="sub">直近90日・10分ごと</span></div>
+                <div class="chart" id="focus-hist"></div>
+            </div>
+            <div class="panel">
+                <div class="panel__title">一時停止の回数<span class="sub">1コマあたり</span></div>
+                <div class="hbars" id="focus-pauses"></div>
+                <div class="panel__title" style="margin-top:18px">平均の長さの推移<span class="sub">週ごと</span></div>
+                <div class="chart" id="focus-trend"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== 記録 ===== -->
+    <section class="view" data-view="records">
+        <div class="idea">自己ベストと1年分のカレンダー・月ごとの推移</div>
+        <div class="panel">
+            <div class="panel__title">自己ベスト</div>
+            <div class="bests" id="bests"></div>
+        </div>
+        <div class="panel">
+            <div class="panel__title">1年のカレンダー<span class="sub" id="year-sub"></span></div>
+            <div class="year"><div class="year__months" id="year-months"></div><div class="year__grid" id="year-grid"></div></div>
+            <div class="seq-legend">0 <i></i><i data-q="1"></i><i data-q="2"></i><i data-q="3"></i><i data-q="4"></i><i data-q="5"></i> 10+</div>
+        </div>
+        <div class="panel">
+            <div class="panel__title">月ごとの推移<span class="sub">直近12か月・点線はマンスリー120</span></div>
+            <div class="chart" id="monthly"></div>
+        </div>
+    </section>
+</div>
+
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+// =========================================================
+// サンプルデータ（固定シード）
+// =========================================================
+const DAY = 86400000;
+const today = new Date(); today.setHours(0, 0, 0, 0);
+let seed = 11;
+const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+const pick = arr => arr[Math.floor(rnd() * arr.length)];
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const md = d => `${d.getMonth() + 1}/${d.getDate()}`;
+const WD = ['日', '月', '火', '水', '木', '金', '土'];
+const fmt1 = n => (Math.round(n * 10) / 10).toFixed(1);
+const hm = m => `${Math.floor(m / 60)}:${String(Math.round(m % 60)).padStart(2, '0')}`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const PROJECT_DEFS = [
+    { id: 'lp-noteia-14', names: ['LP noteia 画像準備', 'parts 作成', 'LP noteia ワイヤー', 'コーディング'] },
+    { id: 'koma-web', names: ['統計の作り直し', '見た目モック', 'ログイン', 'cron 整理'] },
+    { id: 'others', names: ['メール返信', '請求書の整理', '打ち合わせ準備'] },
+    { id: 'moti-xp-web', names: ['XP 画面', 'API 設計'] },
+    { id: 'tax-2026', names: ['確定申告の下準備', '経費の入力'] },
+    { id: 'yuki-bank', names: ['口座まわり'] },
+    { id: 'claude-codex', names: ['運用ルール'] },
+];
+// 時期で重みを変える（tax-2026 は2〜3月だけ、koma-web は最近増える など）
+function projectWeights(d, back) {
+    const m = d.getMonth();
+    return [5, back < 120 ? 5 : 1.5, 3, back > 200 ? 3 : 1, (m === 1 || m === 2) ? 6 : 0.1, 0.6, back < 60 ? 0.8 : 0.2];
+}
+
+const KOMAS = [];
+const DAYS = 371;
+for (let back = DAYS - 1; back >= 0; back--) {
+    const d = new Date(today.getTime() - back * DAY);
+    const wd = d.getDay(), weekend = wd === 0 || wd === 6;
+    if (rnd() > (weekend ? .4 : .9)) continue;
+    let n = weekend ? 1 + Math.floor(rnd() * 3) : 2 + Math.floor(rnd() * 6.5);
+    if (back === 0) n = 3;
+    let t = (weekend ? 10.5 : 9) * 60 + (rnd() - .4) * 120;
+    const w = projectWeights(d, back), wsum = w.reduce((a, b) => a + b, 0);
+    for (let slot = 1; slot <= n; slot++) {
+        let r = rnd() * wsum, pi = 0;
+        while (r > w[pi]) { r -= w[pi]; pi++; }
+        const def = PROJECT_DEFS[pi];
+        const q = rnd();
+        let min = q < .08 ? 20 + rnd() * 45 : q < .74 ? 78 + rnd() * 14 : q < .93 ? 92 + rnd() * 18 : 110 + rnd() * 35;
+        const running = back === 0 && slot === n;
+        if (running) min = 47;
+        const pr = rnd(), pauses = pr < .55 ? 0 : pr < .85 ? 1 : pr < .95 ? 2 : 3;
+        const segs = [];
+        let s = t, left = min;
+        for (let i = 0; i <= pauses; i++) {
+            const len = i === pauses ? left : left * (.3 + rnd() * .4);
+            segs.push([s, s + len]); left -= len; s += len + 5 + rnd() * 15;
+        }
+        KOMAS.push({ date: d, ymd: ymd(d), slot, proj: def.id, name: pick(def.names), min, segs, pauses,
+            status: running ? 'running' : rnd() < .05 ? 'closed' : 'completed' });
+        t = s + 10 + rnd() * 35;
+    }
+}
+// コマ数の規則（トップと同じ）: 完了扱いで20分超〜80分未満は80分扱い
+const value = k => (k.status !== 'running' && k.min > 20 && k.min < 80 ? 80 : k.min) / 80;
+
+const byDay = new Map();
+KOMAS.forEach(k => { const a = byDay.get(k.ymd) ?? []; a.push(k); byDay.set(k.ymd, a); });
+const dayKoma = key => (byDay.get(key) ?? []).reduce((s, k) => s + value(k), 0);
+
+// 色はプロジェクトに固定（全期間の上位5件に1〜5番、ほかは「その他」）。表示中の順位では塗り直さない
+const projTotalAll = {};
+KOMAS.forEach(k => projTotalAll[k.proj] = (projTotalAll[k.proj] ?? 0) + value(k));
+const TOP = Object.entries(projTotalAll).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => id);
+const colorOf = id => TOP.includes(id) ? `var(--p${TOP.indexOf(id) + 1})` : 'var(--p-other)';
+const groupOf = id => TOP.includes(id) ? id : 'その他';
+const GROUPS = [...TOP, 'その他'];
+const groupColor = g => g === 'その他' ? 'var(--p-other)' : colorOf(g);
+
+// =========================================================
+// グラフの部品（SVG を手で組む。軸は1本だけ、目盛りは控えめ）
+// =========================================================
+let W = 720;  // 描く直前に入れ物の幅へ合わせる（文字が縮まないように）
+const widthOf = id => Math.max(320, document.getElementById(id).clientWidth);
+function niceMax(v, step) { return Math.max(step, Math.ceil(v / step) * step); }
+function roundTop(x, y, w, h, r) {
+    r = Math.min(r, h, w / 2);
+    return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+}
+/** 縦棒（積み上げ可）。items: [{label, parts:[{v, color}], tip}] */
+function barChart(items, { height = 220, step = 2, refs = [], unit = '', every = 1 } = {}) {
+    const padL = 34, padR = 8, padT = 12, padB = 26, H = height;
+    const total = it => it.parts.reduce((s, p) => s + p.v, 0);
+    const max = niceMax(Math.max(...items.map(total), ...refs.map(r => r.v)) * 1.05, step);
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const band = plotW / items.length, bw = Math.max(3, Math.min(28, band * .62));
+    const y = v => padT + plotH - v / max * plotH;
+    let g = '';
+    for (let v = 0; v <= max; v += step) {
+        g += `<line class="${v === 0 ? 'axis' : 'grid'}" x1="${padL}" x2="${W - padR}" y1="${y(v)}" y2="${y(v)}"/><text x="${padL - 6}" y="${y(v) + 4}" text-anchor="end">${v}${v === max ? unit : ''}</text>`;
+    }
+    items.forEach((it, i) => {
+        const x = padL + band * i + (band - bw) / 2;
+        let acc = 0;
+        const parts = it.parts.filter(p => p.v > 0);
+        parts.forEach((p, j) => {
+            const y0 = y(acc), y1 = y(acc + p.v), h = Math.max(0, y0 - y1 - (j < parts.length - 1 ? 2 : 0));
+            g += j === parts.length - 1
+                ? `<path d="${roundTop(x, y1, bw, Math.max(0, y0 - y1), 4)}" fill="${p.color}"/>`
+                : `<rect x="${x}" y="${y0 - h}" width="${bw}" height="${h}" fill="${p.color}"/>`;
+            acc += p.v;
+        });
+        if (i % every === 0) g += `<text x="${padL + band * i + band / 2}" y="${H - 8}" text-anchor="middle">${it.label}</text>`;
+        g += `<rect class="hit" x="${padL + band * i}" y="${padT}" width="${band}" height="${plotH}" data-tip="${esc(it.tip)}"/>`;
+    });
+    refs.forEach(r => {
+        g += `<line class="ref" x1="${padL}" x2="${W - padR}" y1="${y(r.v)}" y2="${y(r.v)}"/><text class="ref-label" x="${W - padR}" y="${y(r.v) - 5}" text-anchor="end">${r.label}</text>`;
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" role="img">${g}</svg>`;
+}
+/** 折れ線（累計のペース）。series: [{values, color, dash}] */
+function lineChart(labels, series, { height = 200, step = 5, tips = [] } = {}) {
+    const padL = 34, padR = 10, padT = 12, padB = 26, H = height;
+    const max = niceMax(Math.max(...series.flatMap(s => s.values.filter(v => v != null))) * 1.05, step);
+    const plotW = W - padL - padR, plotH = H - padT - padB, n = labels.length;
+    const x = i => padL + (n === 1 ? plotW / 2 : plotW * i / (n - 1));
+    const y = v => padT + plotH - v / max * plotH;
+    let g = '';
+    for (let v = 0; v <= max; v += step) g += `<line class="${v === 0 ? 'axis' : 'grid'}" x1="${padL}" x2="${W - padR}" y1="${y(v)}" y2="${y(v)}"/><text x="${padL - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+    const every = Math.ceil(n / 10);
+    labels.forEach((l, i) => { if (i % every === 0) g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${l}</text>`; });
+    series.forEach(s => {
+        const pts = s.values.map((v, i) => v == null ? null : `${x(i)},${y(v)}`).filter(Boolean);
+        g += `<polyline points="${pts.join(' ')}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" ${s.dash ? 'stroke-dasharray="5 4"' : ''}/>`;
+        const last = s.values.map((v, i) => [v, i]).filter(([v]) => v != null).pop();
+        if (last && !s.dash) g += `<circle cx="${x(last[1])}" cy="${y(last[0])}" r="4" fill="${s.color}" stroke="var(--card)" stroke-width="2"/>`;
+    });
+    labels.forEach((_, i) => {
+        const w = plotW / Math.max(1, n - 1);
+        g += `<rect class="hit" x="${x(i) - w / 2}" y="${padT}" width="${w}" height="${plotH}" data-tip="${esc(tips[i] ?? '')}"/>`;
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" role="img">${g}</svg>`;
+}
+function hbars(rows, max) {
+    return rows.map(r => `<div class="hbar" data-tip="${esc(r.tip ?? '')}">
+        <div class="hbar__name">${r.color ? `<i style="background:${r.color}"></i>` : ''}${esc(r.name)}</div>
+        <div class="hbar__track"><div class="hbar__fill" style="width:${max ? r.v / max * 100 : 0}%;background:${r.color ?? 'var(--accent)'}"></div></div>
+        <div class="hbar__val">${r.val}</div></div>`).join('');
+}
+const tile = (label, value, unit, delta, sub) => `<div class="tile"><div class="tile__label">${label}</div>
+    <div class="tile__value">${value}<small>${unit}</small></div>
+    ${delta != null ? `<div class="tile__delta ${delta > 0.05 ? 'up' : delta < -0.05 ? 'down' : ''}">${delta > 0 ? '▲' : delta < 0 ? '▼' : '±'} ${fmt1(Math.abs(delta))}${unit} 前の期間の同じ日まで比</div>` : ''}
+    ${sub ? `<div class="tile__sub">${sub}</div>` : ''}</div>`;
+const legendHtml = groups => groups.map(g => `<span><i style="background:${groupColor(g)}"></i>${esc(g)}</span>`).join('');
+
+// =========================================================
+// 期間（週・月）
+// =========================================================
+const period = { unit: 'week', offset: 0 };
+function periodRange(unit, offset) {
+    if (unit === 'week') {
+        const s = new Date(today.getTime() - (today.getDay() + 7 * offset) * DAY);
+        return { start: s, end: new Date(s.getTime() + 6 * DAY), label: `${s.getFullYear()}/${md(s)} 〜 ${md(new Date(s.getTime() + 6 * DAY))}` };
+    }
+    const s = new Date(today.getFullYear(), today.getMonth() - offset, 1);
+    const e = new Date(s.getFullYear(), s.getMonth() + 1, 0);
+    return { start: s, end: e, label: `${s.getFullYear()}年${s.getMonth() + 1}月` };
+}
+function daysOf(r) { const a = []; for (let t = r.start.getTime(); t <= r.end.getTime(); t += DAY) a.push(new Date(t)); return a; }
+function summarize(days) {
+    const ks = days.flatMap(d => byDay.get(ymd(d)) ?? []);
+    const koma = ks.reduce((s, k) => s + value(k), 0);
+    const active = days.filter(d => dayKoma(ymd(d)) > 0).length;
+    return { ks, koma, min: ks.reduce((s, k) => s + k.min, 0), active, full: days.filter(d => dayKoma(ymd(d)) >= 6).length };
+}
+function renderPeriod() {
+    const r = periodRange(period.unit, period.offset), prev = periodRange(period.unit, period.offset + 1);
+    const days = daysOf(r), pdays = daysOf(prev);
+    // 進行中の期間は、前の期間も同じ日数までで比べる
+    const elapsed = days.filter(d => d <= today).length;
+    const cur = summarize(days.slice(0, elapsed)), old = summarize(pdays.slice(0, elapsed));
+    document.getElementById('period-label').textContent = r.label;
+    document.getElementById('period-next').disabled = period.offset === 0;
+    const goal = period.unit === 'week' ? 30 : 120;
+    document.getElementById('period-tiles').innerHTML =
+        tile('合計', fmt1(cur.koma), 'コマ', cur.koma - old.koma, `${period.unit === 'week' ? 'ウィークリー30' : 'マンスリー120'}まで ${cur.koma >= goal ? '達成！' : 'あと ' + fmt1(goal - cur.koma)}`)
+        + tile('作業時間', fmt1(cur.min / 60), '時間', (cur.min - old.min) / 60)
+        + tile('稼働日数', cur.active, '日', cur.active - old.active)
+        + tile('平均', fmt1(cur.active ? cur.koma / cur.active : 0), 'コマ/日', (cur.active ? cur.koma / cur.active : 0) - (old.active ? old.koma / old.active : 0), '稼働した日あたり')
+        + tile('フルデイ', cur.full, '日', cur.full - old.full);
+
+    const items = days.map(d => {
+        const ks = byDay.get(ymd(d)) ?? [];
+        const parts = GROUPS.map(g => ({ g, v: ks.filter(k => groupOf(k.proj) === g).reduce((s, k) => s + value(k), 0), color: groupColor(g) }));
+        const tot = parts.reduce((s, p) => s + p.v, 0);
+        const tip = `<b>${md(d)}（${WD[d.getDay()]}）${fmt1(tot)}コマ</b>` + (d > today ? '<br>まだ先の日' :
+            parts.filter(p => p.v > 0).map(p => `<div class="row"><span><i style="background:${p.color}"></i>${esc(p.g)}</span><span>${fmt1(p.v)}</span></div>`).join(''));
+        return { label: period.unit === 'week' ? `${md(d)} ${WD[d.getDay()]}` : d.getDate(), parts, tip };
+    });
+    W = widthOf('period-bars');
+    document.getElementById('period-bars').innerHTML = barChart(items, { refs: [{ v: 6, label: 'フルデイ 6' }], every: period.unit === 'week' ? 1 : 2 });
+    document.getElementById('period-legend').innerHTML = legendHtml(GROUPS);
+
+    // ペース: 1日目からの累計
+    const cum = (ds, upto) => { let s = 0; return ds.map(d => (upto && d > today) ? null : (s += dayKoma(ymd(d)))); };
+    const len = Math.max(days.length, pdays.length);
+    const a = cum(days, true), b = cum(pdays, false);
+    const labels = Array.from({ length: len }, (_, i) => period.unit === 'week' ? WD[i] : `${i + 1}日`);
+    const tips = labels.map((l, i) => `<b>${l}${period.unit === 'week' ? '曜' : ''}まで</b><div class="row"><span>この期間</span><span>${a[i] == null ? '—' : fmt1(a[i])}</span></div><div class="row"><span>前の期間</span><span>${b[i] == null ? '—' : fmt1(b[i])}</span></div>`);
+    W = widthOf('period-pace');
+    document.getElementById('period-pace').innerHTML = lineChart(labels, [
+        { values: b, color: 'var(--prev)', dash: true }, { values: a, color: 'var(--p1)' }], { step: period.unit === 'week' ? 5 : 20, tips, height: 210 });
+
+    // プロジェクトの内訳
+    const pt = {};
+    cur.ks.forEach(k => pt[k.proj] = (pt[k.proj] ?? 0) + value(k));
+    const rows = Object.entries(pt).sort((x, y) => y[1] - x[1]).map(([id, v]) => ({ name: id, v, color: colorOf(id), val: `<b>${fmt1(v)}</b> コマ・${Math.round(v / cur.koma * 100)}%` }));
+    document.getElementById('period-projects').innerHTML = rows.length ? hbars(rows, rows[0].v) : '<p class="day-note">データがありません</p>';
+
+    // 曜日ごとの平均
+    const wd = Array.from({ length: 7 }, () => ({ s: 0, n: 0 }));
+    days.filter(d => d <= today).forEach(d => { const v = dayKoma(ymd(d)); if (v > 0) { wd[d.getDay()].s += v; wd[d.getDay()].n++; } });
+    const wrows = wd.map((w, i) => ({ name: `${WD[i]}曜`, v: w.n ? w.s / w.n : 0, val: w.n ? `<b>${fmt1(w.s / w.n)}</b> コマ（${w.n}日）` : '—' }));
+    document.getElementById('period-weekday').innerHTML = hbars(wrows, Math.max(...wrows.map(r => r.v)));
+
+    document.getElementById('period-table').innerHTML = '<tr><th>日付</th><th class="r">コマ数</th><th class="r">作業時間</th><th class="r">コマの数</th></tr>' + days.filter(d => d <= today).map(d => {
+        const ks = byDay.get(ymd(d)) ?? [];
+        return `<tr><td>${md(d)}（${WD[d.getDay()]}）</td><td class="r">${ks.length ? fmt1(dayKoma(ymd(d))) : '—'}</td><td class="r">${ks.length ? hm(ks.reduce((s, k) => s + k.min, 0)) : '—'}</td><td class="r">${ks.length || '—'}</td></tr>`;
+    }).join('');
+}
+document.querySelectorAll('[data-unit]').forEach(b => b.addEventListener('click', () => {
+    period.unit = b.dataset.unit; period.offset = 0;
+    document.querySelectorAll('[data-unit]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    renderPeriod();
+}));
+document.getElementById('period-prev').addEventListener('click', () => { period.offset++; renderPeriod(); });
+document.getElementById('period-next').addEventListener('click', () => { period.offset = Math.max(0, period.offset - 1); renderPeriod(); });
+
+// =========================================================
+// プロジェクト
+// =========================================================
+function renderProject(range) {
+    const from = range === 'all' ? new Date(0) : new Date(today.getTime() - (range - 1) * DAY);
+    const ks = KOMAS.filter(k => k.date >= from);
+    const total = ks.reduce((s, k) => s + value(k), 0);
+    const per = {};
+    ks.forEach(k => { const p = per[k.proj] ??= { v: 0, min: 0, n: 0, last: k.date }; p.v += value(k); p.min += k.min; p.n++; if (k.date > p.last) p.last = k.date; });
+    const rows = Object.entries(per).sort((a, b) => b[1].v - a[1].v);
+    document.getElementById('proj-total').textContent = `合計 ${fmt1(total)} コマ`;
+    document.getElementById('proj-share').innerHTML = hbars(rows.map(([id, p]) => ({ name: id, v: p.v, color: colorOf(id), val: `<b>${Math.round(p.v / total * 100)}%</b>・${fmt1(p.v)}` })), rows[0]?.[1].v);
+
+    const allPer = {}, lastAll = {};
+    KOMAS.forEach(k => { allPer[k.proj] = (allPer[k.proj] ?? 0) + value(k); if (!lastAll[k.proj] || k.date > lastAll[k.proj]) lastAll[k.proj] = k.date; });
+    document.getElementById('proj-table').innerHTML = '<tr><th>プロジェクト</th><th class="r">コマ数</th><th class="r">割合</th><th class="r">作業時間</th><th class="r">平均の長さ</th><th>最後に触った日</th><th>職人まで（全期間）</th></tr>'
+        + rows.map(([id, p]) => {
+            const ago = Math.round((today - lastAll[id]) / DAY);
+            const rest = 50 - allPer[id] % 50;
+            return `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${colorOf(id)};margin-right:6px"></span>${esc(id)}</td>
+                <td class="r">${fmt1(p.v)}</td><td class="r">${Math.round(p.v / total * 100)}%</td><td class="r">${hm(p.min)}</td><td class="r">${Math.round(p.min / p.n)}分</td>
+                <td>${ago === 0 ? '今日' : ago + '日前'}${ago > 7 ? '（職人は非表示）' : ''}</td>
+                <td><span class="mini-meter"><span style="width:${(allPer[id] % 50) * 2}%"></span></span>あと ${fmt1(rest)}</td></tr>`;
+        }).join('');
+}
+function renderProjectWeekly() {
+    const weeks = [];
+    for (let i = 11; i >= 0; i--) {
+        const s = new Date(today.getTime() - (today.getDay() + 7 * i) * DAY);
+        const ds = daysOf({ start: s, end: new Date(s.getTime() + 6 * DAY) });
+        const ks = ds.flatMap(d => byDay.get(ymd(d)) ?? []);
+        const parts = GROUPS.map(g => ({ g, v: ks.filter(k => groupOf(k.proj) === g).reduce((a, k) => a + value(k), 0), color: groupColor(g) }));
+        weeks.push({ label: md(s), parts, tip: `<b>${md(s)} の週 ${fmt1(parts.reduce((a, p) => a + p.v, 0))}コマ</b>` + parts.filter(p => p.v > 0).map(p => `<div class="row"><span><i style="background:${p.color}"></i>${esc(p.g)}</span><span>${fmt1(p.v)}</span></div>`).join('') });
+    }
+    W = widthOf('proj-weekly');
+    document.getElementById('proj-weekly').innerHTML = barChart(weeks, { step: 10, refs: [{ v: 30, label: 'ウィークリー30' }], every: 2 });
+    document.getElementById('proj-legend').innerHTML = legendHtml(GROUPS);
+}
+document.querySelectorAll('[data-prange]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-prange]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    renderProject(b.dataset.prange === 'all' ? 'all' : +b.dataset.prange);
+}));
+
+// =========================================================
+// 時間帯
+// =========================================================
+function renderRhythm() {
+    const from = new Date(today.getTime() - 55 * DAY);
+    const heat = Array.from({ length: 7 }, () => Array(24).fill(0));
+    KOMAS.filter(k => k.date >= from).forEach(k => k.segs.forEach(([s, e]) => {
+        for (let m = Math.floor(s); m < e; m++) { const h = Math.floor(m / 60); if (h < 24) heat[k.date.getDay()][h]++; }
+    }));
+    const max = Math.max(...heat.flat());
+    const q = v => v === 0 ? 0 : Math.min(5, Math.ceil(v / max * 5));
+    let html = '<span></span>' + Array.from({ length: 24 }, (_, h) => `<span class="heat__hour">${h % 3 === 0 ? h : ''}</span>`).join('');
+    [1, 2, 3, 4, 5, 6, 0].forEach(d => {
+        html += `<span class="heat__day">${WD[d]}</span>` + heat[d].map((v, h) => `<div class="heat__cell" data-q="${q(v)}" data-tip="${esc(`<b>${WD[d]}曜 ${h}時台</b><br>8週で ${hm(v)}（1週あたり ${Math.round(v / 8)}分）`)}"></div>`).join('');
+    });
+    document.getElementById('heat').innerHTML = html;
+
+    // 時刻ごとの合計からピーク・始業・終業
+    const hourSum = Array(24).fill(0); heat.forEach(r => r.forEach((v, h) => hourSum[h] += v));
+    const peak = hourSum.indexOf(Math.max(...hourSum));
+    const days30 = [];
+    for (let i = 29; i >= 0; i--) { const d = new Date(today.getTime() - i * DAY); const ks = byDay.get(ymd(d)); days30.push({ d, ks }); }
+    const worked = days30.filter(x => x.ks);
+    const starts = worked.map(x => Math.min(...x.ks.map(k => k.segs[0][0]))), ends = worked.map(x => Math.max(...x.ks.map(k => k.segs.at(-1)[1])));
+    const avg = a => a.reduce((s, v) => s + v, 0) / a.length;
+    const morning = KOMAS.filter(k => k.date >= from && k.segs[0][0] < 12 * 60).length / KOMAS.filter(k => k.date >= from).length;
+    document.getElementById('rhythm-tiles').innerHTML = tile('いちばん作業している時間帯', `${peak}〜${peak + 1}`, '時', null, '直近8週')
+        + tile('平均の始業', hm(avg(starts)), '', null, '直近30日・最初のコマの開始')
+        + tile('平均の終業', hm(avg(ends)), '', null, '直近30日・最後のコマの終了')
+        + tile('午前に始めたコマ', Math.round(morning * 100), '%', null, '12時より前に開始');
+
+    // 始業〜終業のレンジ
+    W = widthOf('rhythm-range');
+    const H = 230, padL = 40, padR = 8, padT = 10, padB = 26, plotW = W - padL - padR, plotH = H - padT - padB;
+    const t0 = 6 * 60, t1 = 26 * 60, y = m => padT + (m - t0) / (t1 - t0) * plotH;
+    const band = plotW / days30.length;
+    let g = '';
+    for (let h = 6; h <= 26; h += 4) g += `<line class="grid" x1="${padL}" x2="${W - padR}" y1="${y(h * 60)}" y2="${y(h * 60)}"/><text x="${padL - 6}" y="${y(h * 60) + 4}" text-anchor="end">${h}:00</text>`;
+    days30.forEach((x, i) => {
+        const cx = padL + band * i + band / 2;
+        if (i % 3 === 0) g += `<text x="${cx}" y="${H - 8}" text-anchor="middle">${md(x.d)}</text>`;
+        if (x.ks) {
+            const s = Math.min(...x.ks.map(k => k.segs[0][0])), e = Math.max(...x.ks.map(k => k.segs.at(-1)[1]));
+            g += `<line x1="${cx}" x2="${cx}" y1="${y(s)}" y2="${y(e)}" stroke="var(--seq2)" stroke-width="${Math.max(3, band * .35)}" stroke-linecap="round"/>`;
+            g += `<circle cx="${cx}" cy="${y(s)}" r="4" fill="var(--p1)" stroke="var(--card)" stroke-width="2"/><circle cx="${cx}" cy="${y(e)}" r="4" fill="var(--p2)" stroke="var(--card)" stroke-width="2"/>`;
+            g += `<rect class="hit" x="${padL + band * i}" y="${padT}" width="${band}" height="${plotH}" data-tip="${esc(`<b>${md(x.d)}（${WD[x.d.getDay()]}）</b><br>始業 ${hm(s)} 〜 終業 ${hm(e)}<br>${fmt1(dayKoma(ymd(x.d)))}コマ`)}"/>`;
+        }
+    });
+    document.getElementById('rhythm-range').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img">${g}</svg>`
+        + '<div class="legend"><span><i style="background:var(--p1);border-radius:50%"></i>始業</span><span><i style="background:var(--p2);border-radius:50%"></i>終業</span></div>';
+}
+
+// =========================================================
+// 集中度
+// =========================================================
+function renderFocus() {
+    const from = new Date(today.getTime() - 89 * DAY);
+    const ks = KOMAS.filter(k => k.date >= from && k.status !== 'running');
+    const n = ks.length;
+    const avgMin = ks.reduce((s, k) => s + k.min, 0) / n;
+    const onTarget = ks.filter(k => k.min >= 75 && k.min <= 95).length / n;
+    const over = ks.filter(k => k.min > 100).length / n;
+    const noPause = ks.filter(k => k.pauses === 0).length / n;
+    const closed = ks.filter(k => k.status === 'closed').length / n;
+    document.getElementById('focus-tiles').innerHTML = tile('平均の長さ', Math.round(avgMin), '分', null, '目安は80分')
+        + tile('80分前後で終えた', Math.round(onTarget * 100), '%', null, '75〜95分')
+        + tile('100分を超えた', Math.round(over * 100), '%', null, '超過しがちかどうか')
+        + tile('一度も止めずに終えた', Math.round(noPause * 100), '%', null, '一時停止0回')
+        + tile('中止したコマ', Math.round(closed * 100), '%', null, '前日の未完了を中止');
+
+    const bins = Array.from({ length: 16 }, (_, i) => ({ from: i * 10, n: 0 }));
+    ks.forEach(k => bins[Math.min(15, Math.floor(k.min / 10))].n++);
+    W = widthOf('focus-hist');
+    document.getElementById('focus-hist').innerHTML = barChart(bins.map(b => ({
+        label: b.from === 150 ? '150+' : b.from, parts: [{ v: b.n, color: b.from >= 80 && b.from < 100 ? 'var(--accent)' : b.from >= 100 ? 'var(--highlight)' : 'var(--seq2)' }],
+        tip: `<b>${b.from === 150 ? '150分以上' : `${b.from}〜${b.from + 9}分`}</b><br>${b.n}コマ（${Math.round(b.n / n * 100)}%）`,
+    })), { step: 20, every: 2, height: 220 })
+        + '<div class="legend"><span><i style="background:var(--seq2)"></i>80分未満</span><span><i style="background:var(--accent)"></i>80〜99分</span><span><i style="background:var(--highlight)"></i>100分以上</span></div>';
+
+    const pc = [0, 1, 2, 3].map(p => ks.filter(k => (p === 3 ? k.pauses >= 3 : k.pauses === p)).length);
+    document.getElementById('focus-pauses').innerHTML = hbars(pc.map((c, i) => ({ name: i === 3 ? '3回以上' : `${i}回`, v: c, val: `<b>${Math.round(c / n * 100)}%</b>・${c}コマ` })), Math.max(...pc));
+
+    const weeks = [];
+    for (let i = 11; i >= 0; i--) {
+        const s = new Date(today.getTime() - (today.getDay() + 7 * i) * DAY), e = new Date(s.getTime() + 7 * DAY);
+        const w = KOMAS.filter(k => k.date >= s && k.date < e && k.status !== 'running');
+        weeks.push({ label: md(s), v: w.length ? w.reduce((a, k) => a + k.min, 0) / w.length : null });
+    }
+    W = widthOf('focus-trend');
+    document.getElementById('focus-trend').innerHTML = lineChart(weeks.map(w => w.label), [{ values: weeks.map(w => w.v), color: 'var(--p1)' }],
+        { step: 20, height: 150, tips: weeks.map(w => `<b>${w.label} の週</b><br>平均 ${w.v == null ? '—' : Math.round(w.v) + '分'}`) });
+}
+
+// =========================================================
+// 記録
+// =========================================================
+function renderRecords() {
+    const keys = [...byDay.keys()];
+    const bestDay = keys.reduce((b, k) => dayKoma(k) > dayKoma(b) ? k : b, keys[0]);
+    const wk = {}, mo = {};
+    keys.forEach(k => {
+        const d = new Date(`${k}T00:00:00`), s = ymd(new Date(d.getTime() - d.getDay() * DAY));
+        wk[s] = (wk[s] ?? 0) + dayKoma(k); mo[k.slice(0, 7)] = (mo[k.slice(0, 7)] ?? 0) + dayKoma(k);
+    });
+    const bestWeek = Object.entries(wk).sort((a, b) => b[1] - a[1])[0], bestMonth = Object.entries(mo).sort((a, b) => b[1] - a[1])[0];
+    let run = 0, best = 0, bestEnd = null;
+    for (let t = today.getTime() - (DAYS - 1) * DAY; t <= today.getTime(); t += DAY) {
+        run = dayKoma(ymd(new Date(t))) >= 1 ? run + 1 : 0;
+        if (run > best) { best = run; bestEnd = new Date(t); }
+    }
+    const longest = KOMAS.filter(k => k.status !== 'running').reduce((b, k) => k.min > b.min ? k : b);
+    const early = KOMAS.reduce((b, k) => k.segs[0][0] < b.segs[0][0] ? k : b);
+    const proj = {}; KOMAS.forEach(k => { const key = k.ymd + '|' + k.proj; proj[key] = (proj[key] ?? 0) + value(k); });
+    const [pk, pv] = Object.entries(proj).sort((a, b) => b[1] - a[1])[0];
+    const full = keys.filter(k => dayKoma(k) >= 6).length;
+    const dl = s => { const d = new Date(`${s}T00:00:00`); return `${d.getFullYear()}/${md(d)}`; };
+    const best1 = (ico, label, value, when) => `<div class="best"><div class="best__ico">${ico}</div><div class="best__label">${label}</div><div class="best__value">${value}</div><div class="best__when">${when}</div></div>`;
+    document.getElementById('bests').innerHTML =
+        best1('☀', 'いちばんコマが多い日', `${fmt1(dayKoma(bestDay))} コマ`, dl(bestDay))
+        + best1('📅', 'いちばんコマが多い週', `${fmt1(bestWeek[1])} コマ`, `${dl(bestWeek[0])} の週`)
+        + best1('🌙', 'いちばんコマが多い月', `${fmt1(bestMonth[1])} コマ`, `${+bestMonth[0].slice(0, 4)}年${+bestMonth[0].slice(5)}月`)
+        + best1('🔥', '最長の連続', `${best} 日`, `${md(new Date(bestEnd.getTime() - (best - 1) * DAY))} 〜 ${md(bestEnd)}`)
+        + best1('⏱', 'いちばん長いコマ', `${Math.round(longest.min)} 分`, `${dl(longest.ymd)}・${esc(longest.name)}`)
+        + best1('🌅', 'いちばん早い始業', hm(early.segs[0][0]), dl(early.ymd))
+        + best1('🛠', '1日で同じプロジェクト', `${fmt1(pv)} コマ`, `${dl(pk.split('|')[0])}・${esc(pk.split('|')[1])}`)
+        + best1('🏅', 'フルデイの日', `${full} 日`, '全期間');
+
+    // 1年のカレンダー（53週）
+    const start = new Date(today.getTime() - (today.getDay() + 52 * 7) * DAY);
+    const cells = [], months = [];
+    let yearTotal = 0;
+    for (let t = start.getTime(); t <= today.getTime(); t += DAY) {
+        const d = new Date(t), v = dayKoma(ymd(d)); yearTotal += v;
+        const q = v <= 0 ? 0 : v < 2 ? 1 : v < 4 ? 2 : v < 6 ? 3 : v < 10 ? 4 : 5;
+        cells.push(`<div class="year__cell" data-q="${q}" data-tip="${esc(`<b>${d.getFullYear()}/${md(d)}（${WD[d.getDay()]}）</b><br>${fmt1(v)}コマ`)}"></div>`);
+        if (d.getDay() === 0) months.push(d.getDate() <= 7 ? `${d.getMonth() + 1}月` : '');
+    }
+    document.getElementById('year-grid').innerHTML = cells.join('');
+    document.getElementById('year-months').innerHTML = months.map(m => `<span>${m}</span>`).join('');
+    document.getElementById('year-sub').textContent = `直近53週・合計 ${fmt1(yearTotal)} コマ`;
+
+    const ms = [];
+    for (let i = 11; i >= 0; i--) {
+        const s = new Date(today.getFullYear(), today.getMonth() - i, 1), key = `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, '0')}`;
+        const ks = KOMAS.filter(k => k.ymd.startsWith(key));
+        const parts = GROUPS.map(g => ({ g, v: ks.filter(k => groupOf(k.proj) === g).reduce((a, k) => a + value(k), 0), color: groupColor(g) }));
+        ms.push({ label: `${s.getMonth() + 1}月`, parts, tip: `<b>${s.getFullYear()}年${s.getMonth() + 1}月 ${fmt1(parts.reduce((a, p) => a + p.v, 0))}コマ</b>` + parts.filter(p => p.v > 0).map(p => `<div class="row"><span><i style="background:${p.color}"></i>${esc(p.g)}</span><span>${fmt1(p.v)}</span></div>`).join('') });
+    }
+    W = widthOf('monthly');
+    document.getElementById('monthly').innerHTML = barChart(ms, { step: 30, refs: [{ v: 120, label: 'マンスリー120' }] }) + `<div class="legend">${legendHtml(GROUPS)}</div>`;
+}
+
+// =========================================================
+// タブ・ツールチップ・テーマ
+// =========================================================
+const rendered = {};
+const RENDER = { period: renderPeriod, project: () => { const r = document.querySelector('[data-prange][aria-pressed="true"]').dataset.prange; renderProject(r === 'all' ? 'all' : +r); renderProjectWeekly(); }, rhythm: renderRhythm, focus: renderFocus, records: renderRecords };
+function showTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
+    document.querySelectorAll('.view').forEach(v => v.hidden = v.dataset.view !== name);
+    if (!rendered[name] && RENDER[name]) { RENDER[name](); rendered[name] = true; }
+    try { localStorage.setItem('komaStatsMockTab', name); } catch (e) {}
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.tab)));
+let first = 'period';
+try { first = localStorage.getItem('komaStatsMockTab') || 'period'; } catch (e) {}
+showTab(document.querySelector(`[data-tab="${first}"]`) ? first : 'period');
+
+// 幅が変わったら今のタブを描き直す（ほかのタブは次に開いたときに描く）
+let resizeTimer = null;
+addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        const cur = document.querySelector('.tab[aria-selected="true"]').dataset.tab;
+        Object.keys(rendered).forEach(k => delete rendered[k]);
+        showTab(cur);
+    }, 200);
+});
+
+const tip = document.getElementById('tip');
+document.addEventListener('mouseover', e => {
+    const el = e.target.closest('[data-tip]');
+    if (!el || !el.dataset.tip) { tip.classList.remove('is-show'); return; }
+    tip.innerHTML = el.dataset.tip;
+    tip.classList.add('is-show');
+    const r = el.getBoundingClientRect(), t = tip.getBoundingClientRect();
+    let y = r.top - t.height - 8;
+    if (y < 8) y = r.bottom + 8;
+    tip.style.left = `${Math.max(8, Math.min(r.left + r.width / 2 - t.width / 2, innerWidth - t.width - 8))}px`;
+    tip.style.top = `${y}px`;
+});
+addEventListener('scroll', () => tip.classList.remove('is-show'), { passive: true });
+
+document.getElementById('theme-btn').addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('komaStatsMockTheme', next); } catch (e) {}
+});
+try { const t = localStorage.getItem('komaStatsMockTheme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+</body>
+</html>
