@@ -10,6 +10,7 @@ require_once __DIR__ . '/includes/user.php';
 require_once __DIR__ . '/includes/logger.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/koma_stats.php';
+require_once __DIR__ . '/includes/achievements.php';
 auth_require_page();
 
 $config      = load_config();
@@ -114,7 +115,15 @@ if (!$isEmbed) {
         'calStart'   => $calStart->format('Y-m-d'),
         'calendar'   => $calendar,
         'dayTiers'   => KOMA_DAY_TIERS,
+        'todayAtRender' => $todayValue,
     ];
+
+    // 実績（#T-005）
+    $ach        = achievements_build($daily, $today);
+    $achStore   = ach_load_opened();
+    $achNew     = array_sum(ach_unopened($ach['events'], $achStore['opened']));
+    $homeStats['progress'] = $ach['progress'];
+    $homeStats['daySvgs']  = array_combine(array_column(KOMA_DAY_TIERS, 'key'), array_map(fn($t) => ach_svg($t['key']), KOMA_DAY_TIERS));
 }
 
 function status_label(string $status): string {
@@ -154,6 +163,8 @@ function status_class(string $status): string {
 
 <main class="page-main">
     <?php if (!$isEmbed): ?>
+    <div class="home">
+    <div class="home__main">
     <!-- レベル（累計6コマごとに Lv が1上がる） -->
     <section class="panel level">
         <div class="level__visual" id="level-visual" aria-hidden="true"></div>
@@ -278,6 +289,12 @@ function status_class(string $status): string {
     </section>
 
     <?php if (!$isEmbed): ?>
+    <!-- 実績の進捗（JSで描画。今日の分を毎秒足し直す） -->
+    <section class="panel">
+        <h2 class="panel__title">実績の進捗<span class="sub">獲得に近い順</span></h2>
+        <div class="prog" id="ach-progress"></div>
+    </section>
+
     <!-- カレンダー（初期は閉じる。JSで描画） -->
     <section class="panel fold is-closed" id="calendar-panel">
         <button class="fold__toggle panel__title" aria-expanded="false">カレンダー<span class="sub">直近26週・日曜始まり</span><span class="fold__icon">▼</span></button>
@@ -335,7 +352,64 @@ function status_class(string $status): string {
         </div>
     </section>
     <?php endif; ?>
+
+    <?php if (!$isEmbed): ?>
+    </div><!-- /.home__main -->
+
+    <aside class="home__side">
+        <!-- 実績（アイコンと個数。マウスオーバーで説明と次の条件） -->
+        <section class="panel">
+            <h2 class="panel__title">実績</h2>
+            <?php foreach ($ach['groups'] as $g): ?>
+            <div class="ach-group">
+                <div class="ach-label"><span><?= htmlspecialchars($g['label']) ?></span>
+                    <?php if (!empty($g['side'])): ?><span<?= $g['label'] === '今日' ? ' id="ach-today-side"' : '' ?>><?= htmlspecialchars($g['side']) ?></span><?php endif; ?>
+                </div>
+                <div class="ach-list">
+                    <?php foreach ($g['items'] as $it): ?>
+                    <button type="button" class="ach<?= $it['count'] ? '' : ' is-locked' ?><?= !empty($it['todayGot']) ? ' is-today' : '' ?>"
+                        data-tip="<?= htmlspecialchars($it['tip']) ?>" aria-label="<?= htmlspecialchars(trim(preg_replace('/\s+/', ' ', strip_tags(str_replace(['<br>', '<div'], [' ', ' <div'], $it['tip']))))) ?>">
+                        <?= ach_svg($it['key']) ?>
+                        <?php if ($it['count']): ?><span class="ach__count"><?= (int)$it['count'] ?></span><?php endif; ?>
+                    </button>
+                    <?php endforeach; ?>
+                </div>
+                <?php if (!empty($g['note'])): ?><div class="ach-note"><?= htmlspecialchars($g['note']) ?></div><?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </section>
+
+        <!-- お知らせ -->
+        <section class="panel notice-panel" id="notice-panel">
+            <h2 class="panel__title">お知らせ</h2>
+            <?php if ($achNew > 0): ?>
+            <button type="button" class="chest<?= $achStore['initialized'] ? '' : ' is-big' ?>" id="btn-chest">
+                <svg viewBox="0 0 100 88" aria-hidden="true">
+                    <rect x="12" y="40" width="76" height="42" rx="5" fill="#a0612b" stroke="#5a3214" stroke-width="3"/>
+                    <rect x="12" y="52" width="76" height="6" fill="#e0b84a"/><rect x="44" y="48" width="12" height="16" rx="2" fill="#e0b84a" stroke="#7a5a12" stroke-width="2"/>
+                    <g class="chest__lid"><path d="M12 42V30c0-12 12-20 38-20s38 8 38 20v12z" fill="#b8722f" stroke="#5a3214" stroke-width="3"/><rect x="44" y="12" width="12" height="30" fill="#e0b84a"/></g>
+                </svg>
+                <span><?= $achStore['initialized'] ? '新しい実績が' : 'これまでの実績が' ?> <b><?= $achNew ?>件</b> 届いています<br><span class="sub">クリックで受け取る</span></span>
+            </button>
+            <?php else: ?>
+            <p class="notice-empty" id="notice-empty">新しいお知らせはありません</p>
+            <?php endif; ?>
+        </section>
+    </aside>
+    </div><!-- /.home -->
+    <?php endif; ?>
 </main>
+
+<?php if (!$isEmbed): ?>
+<div class="modal" id="chest-modal" role="dialog" aria-modal="true" aria-labelledby="chest-modal-title" hidden>
+    <div class="modal__box">
+        <h3 class="modal__title" id="chest-modal-title">実績を受け取りました</h3>
+        <div class="modal__list" id="chest-modal-list"></div>
+        <button type="button" class="btn btn-start" id="chest-modal-close">閉じる</button>
+    </div>
+</div>
+<?php endif; ?>
+
 
 <!-- Datalist for project history -->
 <datalist id="project-history-list">

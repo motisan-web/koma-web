@@ -11,6 +11,7 @@ require_once __DIR__ . '/../includes/user.php';
 require_once __DIR__ . '/../includes/logger.php';
 require_once __DIR__ . '/../includes/hook.php';
 require_once __DIR__ . '/../includes/koma_stats.php';
+require_once __DIR__ . '/../includes/achievements.php';
 require_once __DIR__ . '/../includes/auth.php';
 auth_require_api();
 
@@ -188,6 +189,17 @@ if ($action === 'set_theme') {
     $cfg['theme'] = $theme;
     save_config($cfg);
     api_ok(['theme' => $theme]);
+}
+
+// --- 宝箱を開ける（#T-005）。未開封の実績をすべて開封済みにして中身を返す ---
+
+if ($action === 'open_achievements') {
+    $ach   = achievements_build(koma_daily_all(), today_str());
+    $items = [];
+    foreach (ach_open_all($ach['events']) as $key => $count) {
+        $items[] = ['key' => $key, 'name' => ACH_NAMES[$key], 'count' => $count, 'svg' => ach_svg($key)];
+    }
+    api_ok(['items' => $items]);
 }
 
 // --- get_state ---

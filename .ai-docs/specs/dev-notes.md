@@ -30,6 +30,13 @@
 - project_id 履歴は datalist 補完のみ（サーバーサイド fetch 補完なし）。
 - JSON エンコードは `JSON_UNESCAPED_UNICODE` で統一。
 
+## 実績（`includes/achievements.php`）
+- `achievements_build($daily, $today)` が全期間を判定する。同じ実績は何度でも獲得でき、獲得1回を「イベント」として id を振る（例: `full:2026-04-29`、`week30:<週の日曜>`、`month120:2026-04`、`total:3`、`proj:<project_id>:2`、`streak7:<届いた日>`）。id の形を変えると開封済みの記録とずれるので変えない。
+- 種類: 今日（6 / 8 / 10 / 12コマ）、期間（ウィークリー30・マンスリー120・皆勤＝日〜土の7日すべて1コマ以上）、累計（100コマごと・100時間ごと・職人＝同じプロジェクトで50コマごと）、連続（1コマ以上の日が7日・30日続くたび、フルデイが3日続くたび）。累計時間はコマ数 × 80分で数える。
+- 職人は直近7日にコマ数のあるプロジェクトだけ一覧・進捗に出す（獲得の判定と宝箱には隠れたものも含む）。
+- 宝箱: 開封したイベントの id だけを `data/users/<id>_achievements.json`（git 管理外）に保存する。ファイルがない＝一度も開けていないときは、過去分をまとめた大きな宝箱1つとして出す。`open_achievements` アクションはサーバー側で判定し直した未開封分をすべて開封済みにする（クライアントから id は受け取らない）。
+- 実績の進捗はページ表示時の値を `CFG.homeStats.progress` で渡し、JS が「今日のコマ数の増分 × `live`」を足して毎秒並べ直す。今日の実績（6 / 8 / 10 / 12）の進捗は JS が `dayTiers` から作る。
+
 ## フロントエンド（`assets/js/timer.js`）
 - `CFG.serverNow`: PHP がレンダリング時のサーバー時刻（ms）を出力。`_clockOffset = CFG.serverNow - Date.now()` でブラウザとのズレを補正し `liveElapsed` に使う。
 - `prevKey(date, slot)` は `"YYYYMMDD s スロット番号"` 形式（例: `"20260418s7"`）— CSS セレクター用。

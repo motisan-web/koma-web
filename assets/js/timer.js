@@ -789,7 +789,10 @@ function updateSummary() {
     document.getElementById('level-rest').textContent = fmt1((lv + 1) * 6 - total);
     document.getElementById('level-bar').style.width  = `${(total % 6) / 6 * 100}%`;
     document.getElementById('stat-total').textContent = fmt1(total);
+    const side = document.getElementById('ach-today-side');
+    if (side) side.textContent = `${fmt1(today)} コマ`;
     renderLevelVisual(lv);
+    renderProgress(today);
 }
 
 // Lv の絵: 30Lv ごとに実が1つ増える（最大5つ）
@@ -805,6 +808,60 @@ function renderLevelVisual(lv) {
         <ellipse cx="48" cy="88" rx="36" ry="5" class="lv-ground"/><rect x="44" y="50" width="8" height="38" rx="2" class="lv-trunk"/>
         <circle cx="48" cy="40" r="26" class="lv-leaf"/><circle cx="30" cy="52" r="14" class="lv-leaf2"/><circle cx="66" cy="52" r="14" class="lv-leaf2"/>
         <circle cx="48" cy="24" r="14" class="lv-leaf3"/>${fruits}</svg>`;
+}
+
+// ================================================================
+// ACHIEVEMENTS（#T-005。判定は includes/achievements.php、ここは今日の分の足し直しと宝箱だけ）
+// ================================================================
+
+let _progressHtml = '';
+function renderProgress(today) {
+    const st = CFG.homeStats;
+    const el = document.getElementById('ach-progress');
+    if (!st || !el) return;
+    const delta = today - st.todayAtRender;  // ページを開いてから増えた今日のコマ数
+    const items = st.progress.map(p => ({ ...p, done: p.done + delta * p.live }));
+    const next = DAY_TIERS.find(t => today < t.min);
+    if (next) items.push({ key: next.key, name: next.name, done: today, goal: next.min, unit: 'コマ', due: '今日 0:00 まで', svg: st.daySvgs[next.key] });
+
+    const html = items
+        .filter(p => p.done < p.goal)
+        .map(p => ({ ...p, pct: p.done / p.goal * 100 }))
+        .sort((a, b) => b.pct - a.pct)
+        .map(p => `<div class="prog__row">
+            <div class="prog__ico">${p.svg}</div>
+            <div class="prog__text">${escHtml(p.name)}獲得まで あと<b>${p.unit === '日' ? p.goal - p.done : fmt1(p.goal - p.done)}</b>${p.unit}</div>
+            <div class="prog__meta">${Math.floor(p.pct)}%${p.due ? `・${p.due}` : ''}</div>
+            <div class="meter"><div class="meter__fill" style="width:${Math.min(100, p.pct)}%"></div></div>
+        </div>`).join('');
+    if (html !== _progressHtml) el.innerHTML = _progressHtml = html;
+}
+
+function initChest() {
+    const chest = document.getElementById('btn-chest');
+    const modal = document.getElementById('chest-modal');
+    if (!chest || !modal) return;
+    const close = () => { modal.hidden = true; };
+    document.getElementById('chest-modal-close').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+    chest.addEventListener('click', async () => {
+        if (chest.classList.contains('is-open')) return;
+        chest.classList.add('is-open');
+        const res = await apiCall('open_achievements');
+        if (!res.ok) { chest.classList.remove('is-open'); alert('実績を受け取れませんでした。'); return; }
+        document.getElementById('chest-modal-list').innerHTML = res.items.map((it, i) => `
+            <div class="modal__item" style="animation-delay:${i * 60}ms">
+                <div class="ach">${it.svg}${it.count > 1 ? `<span class="ach__count">${it.count}</span>` : ''}</div>
+                <div class="modal__name">${escHtml(it.name)}</div>
+            </div>`).join('');
+        setTimeout(() => {
+            modal.hidden = false;
+            document.getElementById('chest-modal-close').focus();
+            chest.outerHTML = '<p class="notice-empty">新しいお知らせはありません</p>';
+        }, 400);
+    });
 }
 
 // ================================================================
@@ -885,6 +942,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initHistoryEvents();
     initFolds();
     initTooltip();
+    initChest();
     updateSummary();
 
     const addBtn = document.getElementById('btn-add-koma');

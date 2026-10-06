@@ -9,3 +9,4 @@ config.local.php
 .ai-docs/logs/
 data/auth.json
 data/php_sessions/
+data/users/*_achievements.json
