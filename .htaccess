@@ -7,3 +7,8 @@ RedirectMatch 404 ^/(data|logs)(/|$)
 RedirectMatch 404 \.(md|log|yml|yaml|zip)$
 RedirectMatch 404 /\.(gitignore|user\.ini|ftp-deploy-sync-state\.json)$
 RedirectMatch 404 /config\.local\.php$
+
+# 見た目モック（#T-007）はローカル専用。デプロイ対象外だが、念のため .local 以外では 404
+<If "! %{HTTP_HOST} =~ /\.local(:\d+)?$/">
+    RedirectMatch 404 ^/mock(/|$)
+</If>

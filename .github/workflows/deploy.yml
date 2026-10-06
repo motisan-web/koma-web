@@ -27,3 +27,4 @@ jobs:
             CLAUDE.md
             AGENTS.md
             koma_web_design.md
+            mock/**
