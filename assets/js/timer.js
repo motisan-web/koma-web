@@ -288,6 +288,7 @@ function initPrevIncomplete(items) {
 
         const card = buildPrevCard(date, k);
         grid.appendChild(card);
+        renderPrevKoma(key);  // 要素を id で探すので、ページに入れてから描く（#I-016）
 
         if (k.status === 'running' || k.status === 'overtime') {
             startPrevTick(key);
@@ -361,7 +362,6 @@ function buildPrevCard(date, k) {
     bindMetaSave(nameInp, key, 'name');
     bindMetaSave(projInp, key, 'project');
 
-    renderPrevKoma(key);
     return card;
 }
 
