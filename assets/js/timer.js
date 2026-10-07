@@ -958,6 +958,29 @@ function initTooltip() {
 }
 
 // ================================================================
+// DAY CHANGE（0時を過ぎたら再読み込みして、今日のコマ・前日の未完了コマに切り替える。#T-010）
+// ================================================================
+
+const _jstDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo' });  // "YYYY-MM-DD"
+
+function isTyping() {
+    const el = document.activeElement;
+    return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+}
+
+function checkDayChange() {
+    if (_jstDate.format(new Date(Date.now() + _clockOffset)) === CFG.today) return;
+    if (isTyping()) return;  // 入力中なら、入力欄を離れたときにもう一度見る
+    location.reload();
+}
+
+function initDayChange() {
+    setInterval(checkDayChange, 30000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkDayChange(); });
+    document.addEventListener('focusout', () => setTimeout(checkDayChange, 1000));  // 入力の保存を待ってから
+}
+
+// ================================================================
 // BOOT
 // ================================================================
 
@@ -969,6 +992,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initFolds();
     initTooltip();
     initChest();
+    initDayChange();
     setInterval(() => renderInfo(todayKoma()), 30000);  // 実行中のコマがなくても残り時間を進める
     updateSummary();
 
