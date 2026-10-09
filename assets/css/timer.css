@@ -843,6 +843,8 @@ button.ach:hover, button.ach:focus-visible { outline: 2px solid var(--highlight)
 .prog__row .meter { grid-column: 2 / 4; height: 6px; }
 
 /* お知らせ（#T-004）・宝箱 */
+.copy-md { display: flex; gap: 8px; flex-wrap: wrap; }
+.copy-md .btn { flex: 1; min-width: 72px; padding: 8px 10px; }
 .info-row { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 .info-row:last-child { border-bottom: 0; padding-bottom: 0; }
 .info-row:first-of-type { padding-top: 0; }

@@ -37,6 +37,11 @@
 - 宝箱: 開封したイベントの id だけを `data/users/<id>_achievements.json`（git 管理外）に保存する。ファイルがない＝一度も開けていないときは、過去分をまとめた大きな宝箱1つとして出す。`open_achievements` アクションはサーバー側で判定し直した未開封分をすべて開封済みにする（クライアントから id は受け取らない）。
 - 実績の進捗はページ表示時の値を `CFG.homeStats.progress` で渡し、JS が「今日のコマ数の増分 × `live`」を足して毎秒並べ直す。今日の実績（6 / 8 / 10 / 12）の進捗は JS が `dayTiers` から作る。
 
+## マークダウン出力（`api/output.php`）
+- 統計の日別表示と、トップのサイドバー「コマデータをコピー」（今日・昨日・一昨日。`timer.js` の `initCopyMarkdown()`）が同じ API を使う。
+- 最終行: `合計作業時間 N分(YYYY/n/j) コマ数 X.X silentコマ Y.Y`。コマ数は `koma_value()` の合計、silentコマは作業内容に `KOMA_SILENT_TAGS`（`@無音` `@音楽` `@ブラウンノイズ`）を含むコマの `koma_value()` 合計（`koma_is_silent()`）。定義の出どころは Obsidian の `08-claude/frontmatter-daily.md`。
+- http の仮想ホストでは `navigator.clipboard` が使えないので、`copyText()` が `execCommand('copy')` に切り替える。
+
 ## 統計（`stats.php` / `assets/js/stats.js`）
 - タブ: 日別（PHP で描く。事後編集・マークダウン出力あり）/ 期間 / プロジェクト / 時間帯 / 集中度 / 記録。日別以外は PHP が `koma_stats_records()` で全コマを1コマ1行（`d s p n st m v a seg`）にして `window.STATS` に渡し、`stats.js` が集計してグラフを描く。データが増えて重くなったら、ここを日別の集計に置き換える。
 - URL: `?tab=period&unit=week|month&offset=N`（N 期間前）、`?tab=project&p=<project_id>` で単体プロジェクト。旧 URL の `?tab=week` / `?tab=month` は「期間」に寄せる。

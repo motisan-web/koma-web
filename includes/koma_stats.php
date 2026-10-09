@@ -113,6 +113,17 @@ function koma_value(array $k, ?int $now = null): float {
     return $min / KOMA_UNIT_MINUTES;
 }
 
+// silent コマ = 作業内容に静音タグ（動画・ラジオを見ずに作業したコマ）が付いたもの。定義は Obsidian の frontmatter-daily.md
+const KOMA_SILENT_TAGS = ['@無音', '@音楽', '@ブラウンノイズ'];
+
+function koma_is_silent(array $k): bool {
+    $name = (string)($k['name'] ?? '');
+    foreach (KOMA_SILENT_TAGS as $tag) {
+        if (mb_strpos($name, $tag) !== false) return true;
+    }
+    return false;
+}
+
 /**
  * 全期間の日別データ。返り値: ['Y-m-d' => ['koma' => float, 'projects' => [project_id => float]], ...]（日付順）
  */

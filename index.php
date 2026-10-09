@@ -424,6 +424,16 @@ function status_class(string $status): string {
             </div>
             <?php endif; ?>
         </section>
+
+        <!-- コマデータのコピー（マークダウン。日付は JS が CFG.today から決める） -->
+        <section class="panel">
+            <h2 class="panel__title">コマデータをコピー<span class="sub">マークダウン</span></h2>
+            <div class="copy-md">
+                <button type="button" class="btn btn-secondary btn-copy-md" data-ago="0">今日</button>
+                <button type="button" class="btn btn-secondary btn-copy-md" data-ago="1">昨日</button>
+                <button type="button" class="btn btn-secondary btn-copy-md" data-ago="2">一昨日</button>
+            </div>
+        </section>
     </aside>
     </div><!-- /.home -->
     <?php endif; ?>

@@ -7,6 +7,7 @@
 require_once __DIR__ . '/../includes/data.php';
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/koma_stats.php';
 auth_require_api();
 
 header('Content-Type: application/json; charset=utf-8');
@@ -42,6 +43,8 @@ usort($komas, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
 $lines        = [];
 $totalSeconds = 0;
 $komaNum      = 0;
+$komaTotal    = 0.0;
+$silentTotal  = 0.0;
 
 foreach ($komas as $k) {
     $komaNum++;
@@ -59,6 +62,9 @@ foreach ($komas as $k) {
     }
     $minutes = (int)round($seconds / 60);
     $totalSeconds += $seconds;
+    $v = koma_value($k);
+    $komaTotal += $v;
+    if (koma_is_silent($k)) $silentTotal += $v;
 
     $overtimeSec = (int)($k['overtime_seconds'] ?? 0);
     $overtimeNote = $overtimeSec > 0 ? sprintf(' (%d分超過)', (int)round($overtimeSec / 60)) : '';
@@ -74,7 +80,9 @@ foreach ($komas as $k) {
 
 $totalMinutes = (int)round($totalSeconds / 60);
 $displayDate  = (new DateTime($date))->format('Y/n/j');
-$lines[] = "合計作業時間 {$totalMinutes}分({$displayDate})";
+$komaTotal    = number_format($komaTotal, 1, '.', '');
+$silentTotal  = number_format($silentTotal, 1, '.', '');
+$lines[] = "合計作業時間 {$totalMinutes}分({$displayDate}) コマ数 {$komaTotal} silentコマ {$silentTotal}";
 
 $markdown = implode("\n", $lines);
 

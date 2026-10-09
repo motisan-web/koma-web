@@ -981,6 +981,46 @@ function initDayChange() {
 }
 
 // ================================================================
+// COPY MARKDOWN（サイドバーの今日・昨日・一昨日のコマデータ。出力は api/output.php）
+// ================================================================
+
+function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise((resolve, reject) => {  // http の仮想ホストでは clipboard API が使えない
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        ta.remove();
+        ok ? resolve() : reject(new Error('copy failed'));
+    });
+}
+
+function initCopyMarkdown() {
+    document.querySelectorAll('.btn-copy-md').forEach(btn => {
+        const label = btn.textContent;
+        btn.addEventListener('click', async () => {
+            const d = new Date(`${CFG.today}T00:00:00`);
+            d.setDate(d.getDate() - Number(btn.dataset.ago));
+            const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            let msg;
+            try {
+                const res = await fetch(`/api/output.php?date=${date}`).then(r => r.json());
+                if (!res.ok) throw new Error(res.error);
+                await copyText(res.markdown);
+                msg = 'コピーしました';
+            } catch (e) {
+                msg = 'コピーできません';
+            }
+            btn.textContent = msg;
+            setTimeout(() => { btn.textContent = label; }, 2000);
+        });
+    });
+}
+
+// ================================================================
 // BOOT
 // ================================================================
 
@@ -992,6 +1032,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initFolds();
     initTooltip();
     initChest();
+    initCopyMarkdown();
     initDayChange();
     setInterval(() => renderInfo(todayKoma()), 30000);  // 実行中のコマがなくても残り時間を進める
     updateSummary();
