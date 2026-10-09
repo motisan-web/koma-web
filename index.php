@@ -221,6 +221,12 @@ function status_class(string $status): string {
                 value="<?= htmlspecialchars($name) ?>"
                 data-slot="<?= $slot ?>"
             >
+            <select class="koma-card__silent-select" id="koma-silent-<?= $slot ?>" data-slot="<?= $slot ?>" aria-label="静音タグを追加">
+                <option value="">＠ 静音タグを追加</option>
+                <option value="無音">無音</option>
+                <option value="音楽">音楽</option>
+                <option value="ブラウンノイズ">ブラウンノイズ</option>
+            </select>
 
             <!-- Project ID input with datalist -->
             <input

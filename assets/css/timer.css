@@ -228,6 +228,15 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .koma-card__status-badge.completed   { background: var(--green-bg);   color: var(--green); }
 
 /* Inputs */
+.koma-card__silent-select {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    padding: 4px 8px;
+    font-size: 12px;
+}
 .koma-card__name-input,
 .koma-card__project-input {
     width: 100%;

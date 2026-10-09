@@ -548,6 +548,12 @@ function buildKomaCard(slot) {
         <input type="text" class="koma-card__name-input"
                id="koma-name-${slot}" placeholder="作業内容" value=""
                data-slot="${slot}">
+        <select class="koma-card__silent-select" id="koma-silent-${slot}" data-slot="${slot}" aria-label="静音タグを追加">
+                <option value="">＠ 静音タグを追加</option>
+                <option value="無音">無音</option>
+                <option value="音楽">音楽</option>
+                <option value="ブラウンノイズ">ブラウンノイズ</option>
+            </select>
         <input type="text" class="koma-card__project-input"
                id="koma-project-${slot}" placeholder="#project/"
                value="" list="project-history-list" data-slot="${slot}">
@@ -980,6 +986,20 @@ function initDayChange() {
     document.addEventListener('focusout', () => setTimeout(checkDayChange, 1000));  // 入力の保存を待ってから
 }
 
+// 静音タグのプルダウン: 選ぶと作業内容の最後に「 @タグ」を足す（あとは入力欄で自由に編集できる）
+function initSilentSelect() {
+    document.addEventListener('change', e => {
+        const sel = e.target.closest('.koma-card__silent-select');
+        if (!sel) return;
+        const input = document.getElementById(`koma-name-${sel.dataset.slot}`);
+        const tag   = sel.value;
+        sel.value = '';
+        if (!input || !tag || input.value.includes(`@${tag}`)) return;
+        input.value = `${input.value.replace(/\s+$/, '')} @${tag}`.replace(/^\s+/, '');
+        input.dispatchEvent(new Event('input', { bubbles: true }));  // 通常の入力と同じ流れで保存する
+    });
+}
+
 // ================================================================
 // COPY MARKDOWN（サイドバーの今日・昨日・一昨日のコマデータ。出力は api/output.php）
 // ================================================================
@@ -1010,7 +1030,7 @@ function initCopyMarkdown() {
                 const res = await fetch(`/api/output.php?date=${date}`).then(r => r.json());
                 if (!res.ok) throw new Error(res.error);
                 await copyText(res.markdown);
-                msg = 'コピーしました';
+                msg = 'コピー済み';
             } catch (e) {
                 msg = 'コピーできません';
             }
@@ -1033,6 +1053,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initTooltip();
     initChest();
     initCopyMarkdown();
+    initSilentSelect();
     initDayChange();
     setInterval(() => renderInfo(todayKoma()), 30000);  // 実行中のコマがなくても残り時間を進める
     updateSummary();
