@@ -4,7 +4,9 @@ require_once __DIR__ . '/includes/user.php';
 require_once __DIR__ . '/includes/hook.php';
 require_once __DIR__ . '/includes/koma_stats.php';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/claude_token.php';
 auth_require_page();
+auth_start_session();   // CSRF トークン用。出力の前に開始する（ローカルでは auth_require_page が開始しないため）
 
 $currentUser = get_koma_user();
 $config      = load_config();
@@ -12,6 +14,9 @@ $saved       = false;
 $saveError   = '';
 $testResult  = null;
 $weekError   = '';
+$tokenPlain  = null;   // 発行した直後の1回だけ画面に出す（保存・ログには残さない。#T-013）
+$tokenError  = '';
+$tokenNotice = '';
 
 // Handle save
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -62,6 +67,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
     }
 
+    // Claude 用 API のトークン（#T-013）。発行・失効はどちらも CSRF トークンを確認する
+    if (in_array($_POST['action'], ['claude_token_issue', 'claude_token_revoke'], true)) {
+        if (!auth_check_csrf($_POST['csrf'] ?? null)) {
+            $tokenError = '画面の有効期限が切れました。もう一度操作してください。';
+        } elseif ($_POST['action'] === 'claude_token_issue') {
+            header('Cache-Control: no-store');   // 平文を表示するレスポンスはキャッシュさせない
+            $tokenPlain = claude_token_issue();
+            if ($tokenPlain === null) $tokenError = 'トークンの保存に失敗しました。';
+        } else {
+            if (claude_token_revoke()) $tokenNotice = 'トークンを失効しました。';
+            else $tokenError = 'トークンの失効に失敗しました。';
+        }
+    }
+
     if ($_POST['action'] === 'test_hook') {
         $event   = $_POST['test_event'] ?? '';
         $hookCfg = $config['hooks'][$event] ?? null;
@@ -101,6 +120,7 @@ $hookLabels = [
 <body>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
+<?php $claudeToken = claude_token_load(); ?>
 <main class="page-main" style="max-width:720px;">
     <h1 class="page-title">設定</h1>
 
@@ -220,6 +240,47 @@ $hookLabels = [
 
         <button type="submit" class="btn btn-complete" style="padding:10px 28px;">保存</button>
     </form>
+
+    <!-- Claude 連携（#T-013） -->
+    <div class="card" id="claude-token" style="margin-top:24px;">
+        <div class="card__title">Claude 連携（API トークン）</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+            Claude がコマのデータを読み取り、作業内容・プロジェクト・静音タグを直せるようにするトークンです（<code>api/claude.php</code>）。
+            トークンはハッシュだけを保存します。発行した直後の1回だけ画面に出るので、すぐに <code>~/.claude/koma-web.env</code> の <code>KOMA_TOKEN</code> に書いてください。
+            発行し直すと、前のトークンは使えなくなります。
+        </p>
+        <?php if ($tokenError): ?>
+            <div class="notice notice-error"><?= htmlspecialchars($tokenError) ?></div>
+        <?php endif; ?>
+        <?php if ($tokenNotice): ?>
+            <div class="notice notice-success"><?= htmlspecialchars($tokenNotice) ?></div>
+        <?php endif; ?>
+        <?php if ($tokenPlain !== null): ?>
+            <div class="notice notice-success">
+                発行しました。この画面を閉じると二度と表示されません。
+                <div style="margin-top:8px;"><code id="claude-token-plain" style="font-size:12px;word-break:break-all;user-select:all;"><?= htmlspecialchars($tokenPlain) ?></code></div>
+            </div>
+        <?php endif; ?>
+        <p style="font-size:13px;margin-bottom:12px;">
+            状態: <?= $claudeToken ? '発行済み（' . htmlspecialchars((new DateTime($claudeToken['created_at'] ?? 'now'))->format('Y/n/j H:i')) . '）' : '未発行' ?>
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <form method="POST">
+                <input type="hidden" name="action" value="claude_token_issue">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars(auth_csrf_token()) ?>">
+                <button type="submit" class="btn btn-complete" style="font-size:13px;"
+                        <?= $claudeToken ? 'onclick="return confirm(\'発行し直すと前のトークンは使えなくなります。よろしいですか？\')"' : '' ?>><?= $claudeToken ? '再発行' : '発行' ?></button>
+            </form>
+            <?php if ($claudeToken): ?>
+            <form method="POST">
+                <input type="hidden" name="action" value="claude_token_revoke">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars(auth_csrf_token()) ?>">
+                <button type="submit" class="btn-secondary" style="font-size:13px;"
+                        onclick="return confirm('トークンを失効します。Claude から読み書きできなくなります。よろしいですか？')">失効</button>
+            </form>
+            <?php endif; ?>
+        </div>
+    </div>
 </main>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>

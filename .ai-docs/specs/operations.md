@@ -15,6 +15,10 @@
 - 新しく公開したくないファイル・フォルダを足したら、`.htaccess` と `exclude` の両方を直し、ローカルで 404 を確認する。
 - `mock/`（見た目モック）はローカル専用。deploy の exclude に入れ、`.htaccess` でもホスト名が .local 以外なら 404 にしている。
 
+## Claude 用 API のトークン
+- `api/claude.php` は `Authorization: Bearer` のトークンだけで認証する。トークンは設定画面で発行・失効し、ハッシュだけが `data/claude_token.json`（git 管理外・HTTP 遮断済み）に残る。詳細は `specs/claude-api.md`。
+- `.htaccess` の `SetEnvIf Authorization` を消さないこと（FastCGI で Bearer ヘッダーが PHP に届かなくなる）。
+
 ## cron
 - `api/cron_check.php` を CLI から2〜5分ごとに実行する想定（未設定 → backlog の T-001）。役割はブラウザを閉じていても `koma_80min` / `koma_100min` を送ることだけで、コマの状態は変えない。
 
@@ -29,6 +33,6 @@
 - ルートの `koma-web@koma-web.local.pj` は、ローカルでプロジェクトを探すための検索用マーカー（中身は空）。`.htaccess` で `.pj` を 404 にしているので、本番に送られても見えない。
 
 ## リリース（バージョン管理）
-- セマンティックバージョニング。現在のバージョンは `includes/version.php` の `KOMA_VERSION`（フッターに表示）。最初の正式版が 1.0.0、現在 1.3.0（旧 v2.0.0 表記は廃止）。
+- セマンティックバージョニング。現在のバージョンは `includes/version.php` の `KOMA_VERSION`（フッターに表示）。最初の正式版が 1.0.0、現在 1.4.0（旧 v2.0.0 表記は廃止）。
 - リリース手順: ① `includes/version.php` を上げる ② ルートの `CHANGELOG.md` の先頭に版を追記する ③ コミットして `vX.Y.Z` のタグを打つ。
 - 機能追加は MINOR、バグ修正だけなら PATCH、データ形式の非互換な変更は MAJOR を上げる。

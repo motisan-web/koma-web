@@ -12,6 +12,9 @@
 - `edit_koma` アクション（統計の日別表示から呼ぶ）は終わったコマ（completed / closed / auto_closed）のみ対象。時間は合計分数（0〜999の整数）で受け取り、`total_seconds` と `overtime_seconds` を書き換える。segments は変えない。最初の編集時だけ元の値を `original_total_seconds` に残し、`edited_at` を記録する。
 - `set_slot_count` は JS から `CFG.today` を受け取る（深夜をまたいだとき翌日に書き込まないため）。
 
+## Claude 用 API
+- `api/claude.php`（Bearer トークン認証。読み取りと、コマの作業内容・プロジェクト・静音タグの修正だけ）の仕様は `specs/claude-api.md`。プロジェクトIDの正規化は `koma_project_normalize()` を通す。
+
 ## Hook
 - 送信は `includes/hook.php` の `dispatch_hook()` に一本化。timer.php は応答を待たせないようタイムアウト3秒（接続2秒）で直接呼ぶ。設定画面のテスト送信は「有効」の有無に関係なく送る。
 - `koma_80min` / `koma_100min` はコマ1つにつき1回だけ。`dispatch_koma_hook_once()` が送信済みをコマの `hooks_fired`（イベント名 → 送信時刻）に記録し、ブラウザの `notify_*` と cron のどちらが先でも二重に送らない。hook が無効でも「送信済み」として記録される。

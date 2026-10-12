@@ -154,6 +154,24 @@ function koma_is_silent(array $k): bool {
 }
 
 /**
+ * 作業内容の静音タグを付け替える（#T-013。api/claude.php から使う）。
+ * 既存の静音タグ（@無音 @音楽 @ブラウンノイズ）をすべて外し、$tag（`無音` / `@無音` など。空なら付けない）を最後に ` @タグ` で足す。
+ * 返り値は null（$tag が静音タグではない）か、付け替えたあとの作業内容。長さの上限（$maxChars）は本文側を切ってタグを残す
+ */
+function koma_set_silent_tag(string $name, string $tag, int $maxChars = 200): ?string {
+    $tag = ltrim(trim($tag), '@＠');
+    if ($tag !== '' && !in_array('@' . $tag, KOMA_SILENT_TAGS, true)) return null;
+    foreach (KOMA_SILENT_TAGS as $t) {
+        $name = preg_replace('/\s*' . preg_quote($t, '/') . '/u', '', $name);
+    }
+    $name = trim($name);
+    if ($tag === '') return mb_substr($name, 0, $maxChars);
+    $suffix = ' @' . $tag;
+    $base = rtrim(mb_substr($name, 0, max(0, $maxChars - mb_strlen($suffix))));
+    return ltrim($base . $suffix);
+}
+
+/**
  * 全期間の日別データ。返り値: ['Y-m-d' => ['koma' => float, 'projects' => [project_id => float]], ...]（日付順）
  */
 function koma_daily_all(?int $now = null): array {
@@ -312,5 +330,28 @@ function koma_week_status(array $daily, string $today, array $config): array {
         'pastWeekTotal'  => $past,
         'elapsedWorkDays'=> $elapsed,
         'remainWorkDays' => $remain,
+    ];
+}
+
+/**
+ * 週の状況に今日の分を足した進捗（#T-013。api/claude.php 用。トップの JS の weekStatus() と同じ規則）。
+ * $w は koma_week_status() の返り値、$today は今日のコマ数。
+ * 返り値: done（今週の合計）/ rest（目標までの残り）/ reached / target（昨日までの目標累計）/ diff（実績 − 目標累計）/
+ *   pace（'ahead' | 'behind' | 'even'。小数1桁で0なら even）/ need（未達で残り稼働日があるとき、1日あたりの必要コマ数。それ以外は null）
+ */
+function koma_week_progress(array $w, float $today): array {
+    $done   = $w['pastWeekTotal'] + $today;
+    $rest   = max(0.0, $w['goal'] - $done);
+    $target = $w['perDay'] * $w['elapsedWorkDays'];
+    $diff   = $done - $target;
+    $rounded = (int)round(abs($diff) * 10);
+    return [
+        'done'    => $done,
+        'rest'    => $rest,
+        'reached' => $rest <= 0,
+        'target'  => $target,
+        'diff'    => $diff,
+        'pace'    => $rounded === 0 ? 'even' : ($diff > 0 ? 'ahead' : 'behind'),
+        'need'    => ($rest > 0 && $w['remainWorkDays'] > 0) ? $rest / $w['remainWorkDays'] : null,
     ];
 }

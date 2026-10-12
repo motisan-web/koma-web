@@ -12,3 +12,6 @@ RedirectMatch 404 /config\.local\.php$
 <If "! %{HTTP_HOST} =~ /\.local(:\d+)?$/">
     RedirectMatch 404 ^/mock(/|$)
 </If>
+
+# Authorization ヘッダーを PHP に渡す（api/claude.php の Bearer 認証。FastCGI では落ちることがあるため。#T-013）
+SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1

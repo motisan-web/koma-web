@@ -10,3 +10,4 @@ config.local.php
 data/auth.json
 data/php_sessions/
 data/users/*_achievements.json
+data/claude_token.json
