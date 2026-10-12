@@ -49,7 +49,7 @@ $silentTotal  = 0.0;
 foreach ($komas as $k) {
     $komaNum++;
     $status    = $k['status'] ?? 'idle';
-    $done      = in_array($status, ['completed', 'overtime_max', 'closed', 'auto_closed']);
+    $done      = in_array($status, ['completed', 'overtime_max'], true);  // 中止は [x] を付けない（#I-017）
     $checkBox  = $done ? '[x]' : '[ ]';
     $name      = $k['name'] ?: '（未記入）';
     $projId    = $k['project_id'] ?: '';

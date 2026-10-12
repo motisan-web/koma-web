@@ -64,8 +64,14 @@ const STATUS_CLASS = {
     auto_closed:  'is-completed',
 };
 
+// 終わったコマ（完了・中止）。経過時間は total_seconds で確定している
 function isDone(status) {
     return ['completed', 'overtime_max', 'closed', 'auto_closed'].includes(status);
+}
+
+// 完了したコマ。80分への切り上げはこちらだけ（中止は実分数。#I-017）
+function isCompleted(status) {
+    return ['completed', 'overtime_max'].includes(status);
 }
 
 // --- Clock offset correction ---
@@ -769,9 +775,10 @@ function komaValue(k) {
     if (!k || !k.segments) return 0;
     const done = isDone(k.status);
     const sec  = done ? (k.total_seconds ?? 0) : liveElapsed(k);
+    const completed = isCompleted(k.status);
     if (sec <= 0) return 0;
     if (sec >= CFG.anomalyMinutes * 60) return 0;  // 閉じ忘れの作業中コマも数えない（#I-015）
-    return (done && sec > KOMA_SHORT_SEC && sec < KOMA_UNIT_SEC ? KOMA_UNIT_SEC : sec) / KOMA_UNIT_SEC;
+    return (completed && sec > KOMA_SHORT_SEC && sec < KOMA_UNIT_SEC ? KOMA_UNIT_SEC : sec) / KOMA_UNIT_SEC;
 }
 
 function todayKoma() {

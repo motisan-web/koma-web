@@ -9,7 +9,7 @@
 - `set_theme` / `get_state` は slot バリデーション前に処理する（slot 不要なアクション）。
 - `reset` アクションは `segments` が空のコマ専用。開始済みコマには適用不可。
 - `round_to_100min` アクションは完了済み + 100分超過コマのみ対象。
-- `edit_koma` アクション（統計の日別表示から呼ぶ）は完了扱いのコマ（completed / closed / auto_closed）のみ対象。時間は合計分数（0〜999の整数）で受け取り、`total_seconds` と `overtime_seconds` を書き換える。segments は変えない。最初の編集時だけ元の値を `original_total_seconds` に残し、`edited_at` を記録する。
+- `edit_koma` アクション（統計の日別表示から呼ぶ）は終わったコマ（completed / closed / auto_closed）のみ対象。時間は合計分数（0〜999の整数）で受け取り、`total_seconds` と `overtime_seconds` を書き換える。segments は変えない。最初の編集時だけ元の値を `original_total_seconds` に残し、`edited_at` を記録する。
 - `set_slot_count` は JS から `CFG.today` を受け取る（深夜をまたいだとき翌日に書き込まないため）。
 
 ## Hook
@@ -20,9 +20,9 @@
 - コマのステータス全種: `idle` / `running` / `paused` / `overtime` / `completed` / `closed` / `auto_closed`
   - `overtime_max` は廃止（既存データの互換性のためステータス定義は残る）。
   - 100分自動完了は廃止済み。100分経過時は `koma_100min` hook の発火のみ（cron_check.php も状態を変えない）。
-- `closed`・`auto_closed` は統計・マークダウン出力でも「完了扱い」（チェックボックス `[x]`）。
+- 「終わったコマ」（`koma_is_ended()`: completed / overtime_max / closed / auto_closed）は経過時間を `total_seconds` で確定させる。「完了したコマ」（`koma_is_completed()`: completed / overtime_max）だけが `[x]`・80分への切り上げ・統計の「完了したコマ」個数の対象。中止（`closed` / `auto_closed`）は実分数を数えるだけで、完了扱いにしない（#I-017）。JS は `isDone()`（終わった）と `isCompleted()`（完了）に分けてある。
 - 1000分以上のコマは異常値（完了扱いは `total_seconds`、作業中・一時停止中は今までの経過で判定）（`includes/koma_stats.php` の `KOMA_ANOMALY_MINUTES`）。統計画面の全タブ上部に全期間の一覧を出し、日別表示で行を強調する。集計ルールは `includes/koma_stats.php` に集める。
-- コマ数の換算は `koma_value()`: 分数 ÷ 80。完了扱いで20分超〜80分未満は80分扱い、20分以下は実分数。作業中・一時停止中は segments から今の時刻までの実分数。0分と異常値は0。JS（`timer.js` の `komaValue()`）にも同じ規則があるので、変えるときは両方直す。
+- コマ数の換算は `koma_value()`: 分数 ÷ 80。完了（completed / overtime_max）で20分超〜80分未満は80分扱い、20分以下は実分数。中止（closed / auto_closed）は切り上げず常に実分数（`total_seconds`）。作業中・一時停止中は segments から今の時刻までの実分数。0分と異常値は0。JS（`timer.js` の `komaValue()`）にも同じ規則があるので、変えるときは両方直す。
 - `koma_daily_all()` は全セッションを読んで日別のコマ数とプロジェクト別のコマ数を返す（トップ表示のたびに走る）。
 - `KOMA_DAY_TIERS`（6 フルデイ / 8 オーバードライブ / 10 ハイパードライブ / 12 リミットブレイク）が1日のコマ数による実績の段階。カレンダーの色の段階（0 / 〜3 / 〜6 / 6+ / 8+ / 10+）もこれにそろえる。
 - `koma_streak($daily, $today, $min)` は $min コマ以上の日の連続。今日がまだ満たしていなければ昨日までを数える。トップの「連続」は1コマ以上、「フルデイ連続」は6コマ以上。

@@ -9,13 +9,20 @@ require_once __DIR__ . '/config.php';
 // これ以上の分数のコマは放置などによる異常値とみなす（#T-003）
 define('KOMA_ANOMALY_MINUTES', 1000);
 
-const KOMA_DONE_STATUSES = ['completed', 'overtime_max', 'closed', 'auto_closed'];
+// 「終わった」コマ（経過時間が total_seconds で確定している）。中止（closed / auto_closed）も含む
+const KOMA_ENDED_STATUSES = ['completed', 'overtime_max', 'closed', 'auto_closed'];
+// 「完了した」コマ。[x]・80分への切り上げ・完了個数はこちらだけ。中止は含めない（#I-017）
+const KOMA_COMPLETED_STATUSES = ['completed', 'overtime_max'];
 
-function koma_is_done(array $k): bool {
-    return in_array($k['status'] ?? 'idle', KOMA_DONE_STATUSES, true);
+function koma_is_ended(array $k): bool {
+    return in_array($k['status'] ?? 'idle', KOMA_ENDED_STATUSES, true);
 }
 
-// 完了扱いは記録した時間、作業中・一時停止中は今までの経過で判定する（閉じ忘れたコマも数えないため。#I-015）
+function koma_is_completed(array $k): bool {
+    return in_array($k['status'] ?? 'idle', KOMA_COMPLETED_STATUSES, true);
+}
+
+// 終わったコマ（完了・中止）は記録した時間、作業中・一時停止中は今までの経過で判定する（閉じ忘れたコマも数えないため。#I-015）
 function koma_is_anomaly(array $k): bool {
     return koma_seconds($k) >= KOMA_ANOMALY_MINUTES * 60;
 }
@@ -77,8 +84,8 @@ function find_anomaly_komas(): array {
 }
 
 // ---- コマ数の換算（#T-005 の規則。トップのLv・カレンダー・実績で共通に使う） ----
-// コマ数 = 各コマの分数の合計 ÷ 80。完了扱いで20分超〜80分未満は80分扱い、20分以下は実分数。
-// 作業中・一時停止中も実分数で含める。0分完了と異常値は数えない。
+// コマ数 = 各コマの分数の合計 ÷ 80。完了（completed）で20分超〜80分未満は80分扱い、20分以下は実分数。
+// 中止（closed / auto_closed）・作業中・一時停止中は実分数のまま（切り上げない。#I-017）。0分と異常値は数えない。
 
 define('KOMA_UNIT_MINUTES', 80);
 define('KOMA_SHORT_MINUTES', 20);
@@ -91,9 +98,9 @@ const KOMA_DAY_TIERS = [
     ['key' => 'limit', 'min' => 12, 'name' => 'リミットブレイク'],
 ];
 
-/** コマの経過秒数。完了扱いは total_seconds、それ以外は segments から今の時刻で計算する */
+/** コマの経過秒数。終わったコマ（完了・中止）は total_seconds、それ以外は segments から今の時刻で計算する */
 function koma_seconds(array $k, ?int $now = null): int {
-    if (koma_is_done($k)) return (int)($k['total_seconds'] ?? 0);
+    if (koma_is_ended($k)) return (int)($k['total_seconds'] ?? 0);
     $now   ??= time();
     $total = 0;
     foreach ($k['segments'] ?? [] as $seg) {
@@ -109,7 +116,7 @@ function koma_value(array $k, ?int $now = null): float {
     if (koma_is_anomaly($k)) return 0.0;
     $min = koma_seconds($k, $now) / 60;
     if ($min <= 0) return 0.0;
-    if (koma_is_done($k) && $min > KOMA_SHORT_MINUTES && $min < KOMA_UNIT_MINUTES) $min = KOMA_UNIT_MINUTES;
+    if (koma_is_completed($k) && $min > KOMA_SHORT_MINUTES && $min < KOMA_UNIT_MINUTES) $min = KOMA_UNIT_MINUTES;
     return $min / KOMA_UNIT_MINUTES;
 }
 

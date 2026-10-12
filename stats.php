@@ -98,11 +98,11 @@ function fmt_min(int $sec): string {
     $komas       = $daySession['koma'] ?? [];
     $totalSec    = 0;
     $komaCount   = 0;
-    $komaValue   = 0.0;  // トップと同じ数え方（分数 ÷ 80。短い完了は80分扱い）
+    $komaValue   = 0.0;  // トップと同じ数え方（分数 ÷ 80。短い完了は80分扱い。中止は実分数）
     usort($komas, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
     foreach ($komas as $k) {
         $totalSec += (int)($k['total_seconds'] ?? 0);
-        if (koma_is_done($k)) $komaCount++;
+        if (koma_is_completed($k)) $komaCount++;
         $komaValue += koma_value($k);
     }
     ?>
@@ -156,7 +156,7 @@ function fmt_min(int $sec): string {
                     default        => '未実行',
                 };
             ?>
-                <?php $anomaly = koma_is_anomaly($k); $editable = koma_is_done($k) && $status !== 'overtime_max'; ?>
+                <?php $anomaly = koma_is_anomaly($k); $editable = koma_is_ended($k) && $status !== 'overtime_max'; ?>
                 <tr id="koma-row-<?= (int)$k['id'] ?>" class="<?= $anomaly ? 'is-anomaly' : '' ?>">
                     <td style="color:var(--text-muted);">コマ<?= (int)$k['id'] ?></td>
                     <td><?= htmlspecialchars($k['name'] ?: '—') ?></td>
