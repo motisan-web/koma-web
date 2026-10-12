@@ -9,6 +9,28 @@ require_once __DIR__ . '/config.php';
 // これ以上の分数のコマは放置などによる異常値とみなす（#T-003）
 define('KOMA_ANOMALY_MINUTES', 1000);
 
+// ---- プロジェクトID（#T-012） ----
+// 保存値は `#project/xxx` か空。入力欄には接頭辞を固定表示して続きだけ入れる。
+// 規則は JS の KomaProject（assets/js/project-id.js）と同じ。変えるときは両方直す。
+
+const KOMA_PROJECT_PREFIX    = '#project/';
+const KOMA_PROJECT_MAX_CHARS = 100;
+
+/** 保存用に整える。空・`#project/` だけは空。`#project/` で始まらなければ補い、重なっていれば1つにする。長さは timer.php と同じ100文字まで */
+function koma_project_normalize($v): string {
+    $s = koma_project_suffix($v);
+    if ($s === '') return '';
+    return rtrim(mb_substr(KOMA_PROJECT_PREFIX . $s, 0, KOMA_PROJECT_MAX_CHARS));
+}
+
+/** 入力欄に出す「続き」だけ。保存値から接頭辞を外す */
+function koma_project_suffix($v): string {
+    if (!is_scalar($v)) return '';
+    $s = trim((string)$v);
+    while (str_starts_with($s, KOMA_PROJECT_PREFIX)) $s = trim(substr($s, strlen(KOMA_PROJECT_PREFIX)));
+    return $s;
+}
+
 // 「終わった」コマ（経過時間が total_seconds で確定している）。中止（closed / auto_closed）も含む
 const KOMA_ENDED_STATUSES = ['completed', 'overtime_max', 'closed', 'auto_closed'];
 // 「完了した」コマ。[x]・80分への切り上げ・完了個数はこちらだけ。中止は含めない（#I-017）

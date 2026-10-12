@@ -140,7 +140,7 @@ function renderKoma(slot) {
 
     if (k) {
         if (document.activeElement !== nameInput) nameInput.value = k.name || '';
-        if (document.activeElement !== projInput)  projInput.value = k.project_id || '';
+        if (document.activeElement !== projInput)  projInput.value = KomaProject.suffix(k.project_id);
         if (breakChk)    breakChk.checked = !!k.break_after;
         if (breakLabel)  breakLabel.classList.toggle('is-checked', !!k.break_after);
     }
@@ -241,7 +241,7 @@ async function doComplete(slot) {
 async function doUpdateMeta(slot, name, projectId) {
     const params = { slot };
     if (name      !== undefined) params.name       = name;
-    if (projectId !== undefined) params.project_id = projectId;
+    if (projectId !== undefined) params.project_id = KomaProject.full(projectId);
     const res = await apiCall('update_meta', params);
     if (res.ok && res.koma) {
         komaState[slot] = res.koma;
@@ -322,9 +322,12 @@ function buildPrevCard(date, k) {
         <input type="text" class="koma-card__name-input" id="prev-name-${key}"
                value="${escHtml(k.name || '')}" placeholder="作業内容"
                data-key="${key}">
-        <input type="text" class="koma-card__project-input" id="prev-project-${key}"
-               value="${escHtml(k.project_id || '')}" placeholder="#project/"
-               list="project-history-list" data-key="${key}">
+        <div class="project-field koma-card__project-field">
+            <label class="project-field__prefix" for="prev-project-${key}">#project/</label>
+            <input type="text" class="koma-card__project-input" id="prev-project-${key}"
+                   value="${escHtml(KomaProject.suffix(k.project_id))}" placeholder="続きを入力"
+                   list="project-history-list" data-key="${key}">
+        </div>
         <div class="koma-card__progress-wrap">
             <div class="koma-card__progress-bar">
                 <div class="koma-card__progress-fill" id="prev-fill-${key}" style="width:0%"></div>
@@ -514,7 +517,7 @@ function bindMetaSave(input, key, field) {
         if (!entry) return;
         const params = { slot: entry.koma.id, date: entry.date };
         if (field === 'name')    params.name       = input.value;
-        if (field === 'project') params.project_id = input.value;
+        if (field === 'project') params.project_id = KomaProject.full(input.value);
         const res = await apiCall('update_meta', params);
         if (res.ok && res.koma) {
             entry.koma = res.koma;
@@ -560,9 +563,12 @@ function buildKomaCard(slot) {
                 <option value="音楽">音楽</option>
                 <option value="ブラウンノイズ">ブラウンノイズ</option>
             </select>
-        <input type="text" class="koma-card__project-input"
-               id="koma-project-${slot}" placeholder="#project/"
-               value="" list="project-history-list" data-slot="${slot}">
+        <div class="project-field koma-card__project-field">
+            <label class="project-field__prefix" for="koma-project-${slot}">#project/</label>
+            <input type="text" class="koma-card__project-input"
+                   id="koma-project-${slot}" placeholder="続きを入力"
+                   value="" list="project-history-list" data-slot="${slot}">
+        </div>
         <div class="koma-card__progress-wrap">
             <div class="koma-card__progress-bar">
                 <div class="koma-card__progress-fill" id="koma-fill-${slot}" style="width:0%"></div>
@@ -659,6 +665,8 @@ function addKoma() {
 // ================================================================
 
 function refreshProjectHistory(newProject) {
+    // 入力欄・候補には接頭辞を除いた「続き」だけを出す（#T-012）
+    newProject = KomaProject.suffix(newProject);
     if (!newProject) return;
     const dl = document.getElementById('project-history-list');
     if (!dl) return;
@@ -741,7 +749,7 @@ function copyHistoryEntry(name, projectId) {
     const nameEl = document.getElementById(`koma-name-${slot}`);
     const projEl = document.getElementById(`koma-project-${slot}`);
     if (nameEl) nameEl.value = name;
-    if (projEl) projEl.value = projectId;
+    if (projEl) projEl.value = KomaProject.suffix(projectId);
     doUpdateMeta(slot, name, projectId);
     const card = document.getElementById(`koma-card-${slot}`);
     if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });

@@ -335,7 +335,7 @@ switch ($action) {
         }
         if (isset($req['project_id'])) {
             $old = $k['project_id'];
-            $k['project_id'] = mb_substr(trim($req['project_id']), 0, 100);
+            $k['project_id'] = koma_project_normalize($req['project_id']);
             if ($k['project_id'] !== $old && $k['project_id'] !== '') {
                 push_project_history($k['project_id']);
             }
@@ -400,7 +400,7 @@ switch ($action) {
         $k['overtime_seconds'] = max(0, $k['total_seconds'] - $koma_duration);
         if (isset($req['name']))       $k['name']       = mb_substr(trim($req['name']), 0, 200);
         if (isset($req['project_id'])) {
-            $k['project_id'] = mb_substr(trim($req['project_id']), 0, 100);
+            $k['project_id'] = koma_project_normalize($req['project_id']);
             if ($k['project_id'] !== '') push_project_history($k['project_id']);
         }
         $k['edited_at'] = now_iso();

@@ -1026,3 +1026,40 @@ button.ach:hover, button.ach:focus-visible { outline: 2px solid var(--highlight)
 .mini-meter { display: inline-block; width: 70px; height: 6px; background: var(--bg-input); border-radius: 3px; overflow: hidden; vertical-align: middle; margin-right: 6px; }
 .mini-meter span { display: block; height: 100%; background: var(--accent); }
 .table-scroll .data-table th, .table-scroll .data-table td { white-space: nowrap; }
+
+/* プロジェクト入力欄: `#project/` を固定表示して続きだけ入力する（#T-012） */
+.project-field {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    transition: border-color .15s;
+}
+.project-field:focus-within { border-color: var(--border-focus); }
+.project-field__prefix {
+    flex: 0 0 auto;
+    padding: 0 0 0 10px;
+    color: var(--text-muted);
+    font-size: inherit;
+    white-space: nowrap;
+    user-select: none;
+    cursor: text;
+}
+.project-field input,
+.project-field input:focus {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 6px 10px 6px 0;
+    color: var(--text);
+    outline: none;
+}
+.project-field input::placeholder { color: var(--text-dim); }
+.koma-edit-form label .project-field { flex-direction: row; }
+.koma-edit-form .project-field input { padding: 6px 8px 6px 0; }
+.koma-edit-form .project-field__prefix { padding-left: 8px; font-size: 13px; }

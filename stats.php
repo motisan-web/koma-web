@@ -180,7 +180,7 @@ function fmt_min(int $sec): string {
                         <form class="koma-edit-form" data-slot="<?= (int)$k['id'] ?>">
                             <label>時間（分）<input type="number" name="total_minutes" min="0" max="<?= KOMA_ANOMALY_MINUTES - 1 ?>" step="1" required value="<?= intdiv($sec, 60) ?>"></label>
                             <label>内容<input type="text" name="name" maxlength="200" value="<?= htmlspecialchars($k['name'] ?? '') ?>"></label>
-                            <label>プロジェクト<input type="text" name="project_id" maxlength="100" value="<?= htmlspecialchars($k['project_id'] ?? '') ?>"></label>
+                            <label>プロジェクト<span class="project-field"><span class="project-field__prefix">#project/</span><input type="text" name="project_id" maxlength="100" placeholder="続きを入力" value="<?= htmlspecialchars(koma_project_suffix($k['project_id'] ?? '')) ?>"></span></label>
                             <button type="submit" class="btn btn-complete" style="font-size:12px;">保存</button>
                             <button type="button" class="btn-secondary btn-edit-cancel" style="font-size:12px;">キャンセル</button>
                             <span class="koma-edit-error"></span>
@@ -364,6 +364,7 @@ function fmt_min(int $sec): string {
 <?php endif; ?>
 
 <?php if ($tab === "day"): ?>
+<script src="/assets/js/project-id.js"></script>
 <script>
 // 完了コマの事後編集（#T-002）
 (() => {
@@ -391,7 +392,7 @@ function fmt_min(int $sec): string {
                     slot: +form.dataset.slot,
                     total_minutes: +form.elements.namedItem("total_minutes").value,
                     name: form.elements.namedItem("name").value,
-                    project_id: form.elements.namedItem("project_id").value,
+                    project_id: KomaProject.full(form.elements.namedItem("project_id").value),
                 }),
             }).then(r => r.json()).catch(() => ({ ok: false, error: "通信に失敗しました" }));
             if (res.ok) {

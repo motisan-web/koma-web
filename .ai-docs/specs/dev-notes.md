@@ -27,7 +27,8 @@
 - `KOMA_DAY_TIERS`（6 フルデイ / 8 オーバードライブ / 10 ハイパードライブ / 12 リミットブレイク）が1日のコマ数による実績の段階。カレンダーの色の段階（0 / 〜3 / 〜6 / 6+ / 8+ / 10+）もこれにそろえる。
 - `koma_streak($daily, $today, $min)` は $min コマ以上の日の連続。今日がまだ満たしていなければ昨日までを数える。トップの「連続」は1コマ以上、「フルデイ連続」は6コマ以上。
 - `break_notify` hook はコマ完了時に即発火（「10分後に叩く」遅延は hook 受け取り側で実装する想定）。
-- project_id 履歴は datalist 補完のみ（サーバーサイド fetch 補完なし）。
+- project_id 履歴は datalist 補完のみ（サーバーサイド fetch 補完なし）。履歴は保存値（`#project/xxx`）のまま持ち、datalist の候補には接頭辞を除いた続きだけを出す。
+- プロジェクトID（#T-012）: 保存値は `#project/xxx` か空。入力欄（トップのコマカード・前日コマ・動的追加コマ・統計の事後編集）は `#project/` を固定表示の接頭辞ラベルにして続きだけ入れる。正規化は `koma_project_normalize()`（`includes/koma_stats.php`）の1つで、空・`#project/` だけは空、`#project/` で始まらなければ補う、重なっていれば1つにする、100文字まで。`update_meta` / `edit_koma` はこれを通して保存する。JS 側は `KomaProject.full()` / `suffix()`（`assets/js/project-id.js`。stats.php でも読み込む）で同じ規則を持つので、変えるときは両方直す。入力・貼り付けで `#project/` 付きが来たら `project-id.js` の capture 付き input リスナーが入力欄から外す。履歴の表示・統計・マークダウン出力は保存値のまま。
 - JSON エンコードは `JSON_UNESCAPED_UNICODE` で統一。
 
 ## 実績（`includes/achievements.php`）

@@ -230,15 +230,18 @@ function status_class(string $status): string {
             </select>
 
             <!-- Project ID input with datalist -->
-            <input
-                type="text"
-                class="koma-card__project-input"
-                id="koma-project-<?= $slot ?>"
-                placeholder="#project/"
-                value="<?= htmlspecialchars($projId) ?>"
-                list="project-history-list"
-                data-slot="<?= $slot ?>"
-            >
+            <div class="project-field koma-card__project-field">
+                <label class="project-field__prefix" for="koma-project-<?= $slot ?>">#project/</label>
+                <input
+                    type="text"
+                    class="koma-card__project-input"
+                    id="koma-project-<?= $slot ?>"
+                    placeholder="続きを入力"
+                    value="<?= htmlspecialchars(koma_project_suffix($projId)) ?>"
+                    list="project-history-list"
+                    data-slot="<?= $slot ?>"
+                >
+            </div>
 
             <!-- Progress bar -->
             <div class="koma-card__progress-wrap">
@@ -466,7 +469,7 @@ function status_class(string $status): string {
 <!-- Datalist for project history -->
 <datalist id="project-history-list">
     <?php foreach ($currentUser['project_history'] as $ph): ?>
-        <option value="<?= htmlspecialchars($ph) ?>">
+        <option value="<?= htmlspecialchars(koma_project_suffix($ph)) ?>">
     <?php endforeach; ?>
 </datalist>
 
@@ -488,6 +491,7 @@ function status_class(string $status): string {
         homeStats:       <?= json_encode($homeStats, JSON_UNESCAPED_UNICODE) ?>,
     };
 </script>
+<script src="/assets/js/project-id.js"></script>
 <script src="/assets/js/timer.js"></script>
 </body>
 </html>
