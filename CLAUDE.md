@@ -21,18 +21,22 @@
 ├── index.php         # メインタイマーページ（header付き）
 ├── embed.php         # 埋め込み用（EMBED_MODE=true）
 ├── stats.php         # 統計ページ（日/週/月/プロジェクト別）
-├── settings.php      # Hook・基本設定ページ
+├── settings.php      # Hook・基本設定ページ（週の目標・Claude 連携トークンの発行）
+├── calendar.php      # カレンダー（休み・稼働日を日付単位で登録）
 ├── help.php          # 使い方詳細
 ├── login.php         # ログイン・初回登録・ログアウト
 ├── api/
 │   ├── timer.php     # タイマー操作API（start/pause/complete/update_meta等）
 │   ├── output.php    # マークダウン出力API
+│   ├── claude.php    # Claude 用API（トークン認証。読み取り・コマの中身の修正・休み登録）
 │   └── cron_check.php # cron 用。80分・100分の hook を送るだけ
 ├── includes/
 │   ├── header.php / footer.php
 │   ├── config.php    # 設定ローダー
 │   ├── auth.php      # ログイン（ローカルは不要）
-│   ├── koma_stats.php # コマの集計ルール・異常値判定
+│   ├── koma_stats.php # コマの集計ルール・異常値判定・週の状況
+│   ├── claude_token.php # Claude 用トークンの発行・照合（ハッシュだけ保存）
+│   ├── calendar.php  # 休み・稼働日の例外（data/calendar.json）
 │   ├── hook.php      # Hook 送信の共通関数
 │   ├── data.php      # JSON読み書き（ファイルロック付き）
 │   ├── user.php      # ユーザーコンテキスト
