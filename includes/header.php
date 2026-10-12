@@ -6,6 +6,7 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
 $navItems = [
     'index'    => ['label' => 'タイマー', 'href' => '/'],
     'stats'    => ['label' => '統計',     'href' => '/stats.php'],
+    'calendar' => ['label' => 'カレンダー', 'href' => '/calendar.php'],
     'settings' => ['label' => '設定',     'href' => '/settings.php'],
     'help'     => ['label' => '使い方',   'href' => '/help.php'],
 ];

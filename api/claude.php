@@ -10,9 +10,11 @@
  *   week         ?date=（その日を含む週。省略時は今週）  日曜〜土曜の日別コマ数と合計・目標
  *   week_status  今週の状況（トップの「週の状況」と同じ値。koma_week_status + 今日の分）
  *   stats        ?from=&to=（省略時は今日を含む直近30日。最大366日）&project=（任意）  期間の集計とプロジェクト別
+ *   calendar     ?from=&to=（省略時は今月。最大366日）  日ごとの休み/稼働（日付の例外 → 曜日の既定。#T-014）
  * 更新（POST JSON）
  *   update_koma  {date, slot, name?, project_id?, silent?}  既存コマの作業内容・プロジェクト・静音タグだけ。
  *                コマの新規作成・移動・時間の編集・タイマー操作は受け付けない
+ *   set_day_type {date, type}  日付の休み/稼働の登録・解除（type: off / work / default＝例外を消して曜日の既定に戻す。#T-014）
  */
 
 require_once __DIR__ . '/../includes/data.php';
@@ -80,6 +82,14 @@ function claude_range($from, $to, string $defaultFrom, string $defaultTo): array
     return [$from, $to, $days];
 }
 
+/** その日が休みか（日付の例外 → 曜日の既定）。$calendar / $offDays は呼び出し側で1回だけ読み込んで渡す */
+function claude_day_off(string $date, array $calendar, array $offDays): array {
+    return [
+        'off'       => koma_day_is_off($date, $offDays, $calendar),
+        'exception' => $calendar[$date] ?? null,   // 'off' | 'work' | null（曜日の既定のまま）
+    ];
+}
+
 /** コマ1つの応答用の形 */
 function claude_koma_view(array $k): array {
     return [
@@ -114,6 +124,7 @@ switch ($action) {
 
     case 'day': {
         $date  = claude_date($_GET['date'] ?? null, $today);
+        $offInfo = claude_day_off($date, koma_calendar_load(), koma_week_off_days(load_config()['week_off_days'] ?? null));
         $total = 0.0; $silent = 0.0; $seconds = 0;
         $list  = [];
         foreach (claude_day_komas($date) as $k) {
@@ -125,6 +136,8 @@ switch ($action) {
         }
         claude_ok([
             'date'        => $date,
+            'off'         => $offInfo['off'],
+            'off_exception' => $offInfo['exception'],
             'koma'        => round($total, 2),
             'silent_koma' => round($silent, 2),
             'minutes'     => round($seconds / 60, 1),
@@ -146,17 +159,22 @@ switch ($action) {
     case 'week': {
         $date  = claude_date($_GET['date'] ?? null, $today);
         $start = koma_week_start($date);
-        $days = []; $total = 0.0;
+        $cal = koma_calendar_load();
+        $offDays = koma_week_off_days(load_config()['week_off_days'] ?? null);
+        $days = []; $total = 0.0; $workDays = 0;
         for ($i = 0; $i < 7; $i++) {
             $d = claude_add_days($start, $i);
             $v = claude_day_sum($d);
             $total += $v;
-            $days[] = ['date' => $d, 'dow' => $i, 'koma' => round($v, 2)];
+            $o = claude_day_off($d, $cal, $offDays);
+            if (!$o['off']) $workDays++;
+            $days[] = ['date' => $d, 'dow' => $i, 'koma' => round($v, 2), 'off' => $o['off'], 'off_exception' => $o['exception']];
         }
         claude_ok([
             'week_start' => $start,
             'week_end'   => claude_add_days($start, 6),
             'goal'       => koma_week_goal(load_config()['week_goal'] ?? null),
+            'work_days'  => $workDays,
             'total'      => round($total, 2),
             'days'       => $days,
         ]);
@@ -164,13 +182,15 @@ switch ($action) {
 
     case 'week_status': {
         $daily = koma_daily_all();
-        $w     = koma_week_status($daily, $today, load_config());
+        $w     = koma_week_status($daily, $today, load_config(), koma_calendar_load());
         $p     = koma_week_progress($w, (float)($daily[$today]['koma'] ?? 0.0));
         claude_ok([
             'today'                  => $today,
             'week_start'             => $w['weekStart'],
             'goal'                   => $w['goal'],
             'off_days'               => $w['offDays'],
+            'today_off'              => $w['todayOff'],
+            'off_week'               => $p['offWeek'],
             'work_days'              => $w['workDays'],
             'per_day'                => round($w['perDay'], 2),
             'elapsed_work_days'      => $w['elapsedWorkDays'],
@@ -183,6 +203,20 @@ switch ($action) {
             'pace'                   => $p['pace'],
             'need_per_day'           => $p['need'] === null ? null : round($p['need'], 2),
         ]);
+    }
+
+    case 'calendar': {
+        $cal = koma_calendar_load();
+        $offDays = koma_week_off_days(load_config()['week_off_days'] ?? null);
+        $monthStart = substr($today, 0, 8) . '01';
+        $monthEnd = (new DateTime($monthStart, $tz))->modify('last day of this month')->format('Y-m-d');
+        [$from, $to] = claude_range($_GET['from'] ?? null, $_GET['to'] ?? null, $monthStart, $monthEnd);
+        $days = [];
+        for ($d = $from; $d <= $to; $d = claude_add_days($d, 1)) {
+            $o = claude_day_off($d, $cal, $offDays);
+            $days[] = ['date' => $d, 'dow' => (int)(new DateTime($d, $tz))->format('w'), 'off' => $o['off'], 'exception' => $o['exception']];
+        }
+        claude_ok(['from' => $from, 'to' => $to, 'off_days' => $offDays, 'days' => $days]);
     }
 
     case 'stats': {
@@ -226,6 +260,20 @@ switch ($action) {
             'by_project'  => $projects,
             'by_day'      => $byDay,
         ]);
+    }
+
+    case 'set_day_type': {
+        if ($method !== 'POST') claude_error('POST で呼んでください', 405);
+        $extra = array_diff(array_map('strval', array_keys($body)), ['action', 'date', 'type']);
+        if ($extra) claude_error('指定できるのは date / type だけです（未対応: ' . implode(', ', $extra) . '）');
+        if (!isset($body['date'])) claude_error('date is required');
+        $date = claude_date($body['date'], $today);
+        $type = $body['type'] ?? null;
+        if (!is_string($type) || !in_array($type, ['off', 'work', 'default'], true)) claude_error('type は off / work / default のいずれかです');
+        $err = koma_calendar_set($date, $type);
+        if ($err !== null) claude_error($err, 500);
+        $o = claude_day_off($date, koma_calendar_load(), koma_week_off_days(load_config()['week_off_days'] ?? null));
+        claude_ok(['date' => $date, 'off' => $o['off'], 'exception' => $o['exception']]);
     }
 
     case 'update_koma': {

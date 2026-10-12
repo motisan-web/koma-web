@@ -1,0 +1,44 @@
+/* カレンダータブ（休み・稼働日の登録。#T-014）。配色の変数は timer.css（ダーク/ライト両対応） */
+.cal-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.cal-toolbar__title { font-size: 16px; font-weight: 700; flex: 1 1 auto; text-align: center; min-width: 120px; }
+.cal-toolbar .btn-secondary { text-decoration: none; font-size: 13px; padding: 6px 10px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.cal-grid__dow { text-align: center; font-size: 11px; font-weight: 700; color: var(--text-muted); padding: 4px 0; }
+.cal-grid__dow.is-sun { color: var(--red); }
+.cal-grid__dow.is-sat { color: var(--blue); }
+.cal-day {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+    min-height: 64px; padding: 6px 8px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text); font: inherit; text-align: left; cursor: pointer;
+    transition: border-color .12s, background .12s;
+}
+.cal-day:hover:not(:disabled) { border-color: var(--border-focus); }
+.cal-day:disabled { opacity: .6; cursor: progress; }
+.cal-day--blank { background: transparent; border-color: transparent; cursor: default; }
+.cal-day__num { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cal-day__label { font-size: 11px; font-weight: 700; min-height: 15px; }
+.cal-day__koma { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* 曜日の既定の休み（日付の登録なし）: 灰色・点線 */
+.cal-day.is-default-off { background: var(--bg-soft); border-style: dashed; color: var(--text-muted); }
+.cal-day.is-default-off .cal-day__label { color: var(--text-muted); font-weight: 500; }
+/* 日付で登録した休み: 赤 */
+.cal-day.is-off { background: var(--red-bg); border-color: var(--red); }
+.cal-day.is-off .cal-day__label { color: var(--red); }
+/* 日付で登録した稼働: 緑 */
+.cal-day.is-work { background: var(--green-bg); border-color: var(--green); }
+.cal-day.is-work .cal-day__label { color: var(--green); }
+.cal-day.is-today .cal-day__num { box-shadow: 0 2px 0 var(--highlight); }
+.cal-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: var(--text-muted); }
+.cal-legend__chip {
+    display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 3px;
+}
+.cal-legend__chip.is-default-off { background: var(--bg-soft); border-style: dashed; }
+.cal-legend__chip.is-off { background: var(--red-bg); border-color: var(--red); }
+.cal-legend__chip.is-work { background: var(--green-bg); border-color: var(--green); }
+#cal-error { margin-top: 12px; }
+@media (max-width: 480px) {
+    .cal-grid { gap: 4px; }
+    .cal-day { min-height: 56px; padding: 4px 5px; }
+}

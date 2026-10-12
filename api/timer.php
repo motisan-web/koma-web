@@ -151,6 +151,17 @@ if ($action === 'set_theme') {
     api_ok(['theme' => $theme]);
 }
 
+// --- 休み・稼働日の登録（#T-014。カレンダータブから）。type: off（休み）/ work（稼働）/ default（例外を消す）---
+
+if ($action === 'set_day_type') {
+    if ($req_date === null) api_error('date is required');
+    $type = $req['type'] ?? '';
+    if (!is_string($type)) api_error('type is required');
+    $err = koma_calendar_set($req_date, $type);
+    if ($err !== null) api_error($err);
+    api_ok(['date' => $req_date, 'type' => $type]);
+}
+
 // --- 宝箱を開ける（#T-005）。未開封の実績をすべて開封済みにして中身を返す ---
 
 if ($action === 'open_achievements') {

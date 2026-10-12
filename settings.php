@@ -175,7 +175,7 @@ $hookLabels = [
                 <input type="number" name="week_goal" value="<?= koma_week_goal($config['week_goal'] ?? null) ?>" min="1" max="200" style="width:100px;">
             </div>
             <div class="form-row">
-                <label>休みの曜日 — 休み以外の日で目標を割って1日のペースを出します（少なくとも1日は稼働日）</label>
+                <label>休みの曜日 — 休み以外の日で目標を割って1日のペースを出します（少なくとも1日は稼働日）。日付ごとの休み・稼働は <a href="/calendar.php" style="color:var(--accent);">カレンダー</a> で登録します</label>
                 <?php $weekOffNow = koma_week_off_days($config['week_off_days'] ?? null); ?>
                 <div style="display:flex;gap:16px;flex-wrap:wrap;">
                     <?php foreach (['日', '月', '火', '水', '木', '金', '土'] as $wi => $wl): ?>

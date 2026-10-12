@@ -126,7 +126,7 @@ if (!$isEmbed) {
     $homeStats['progress'] = $ach['progress'];
     $anomalies = find_anomaly_komas();  // お知らせ（#T-004）
     $homeStats['daySvgs']  = array_combine(array_column(KOMA_DAY_TIERS, 'key'), array_map(fn($t) => ach_svg($t['key']), KOMA_DAY_TIERS));
-    $homeStats['week']     = koma_week_status($daily, $today, $config);  // 週の状況（#T-011。今日の分は JS が足す）
+    $homeStats['week']     = koma_week_status($daily, $today, $config, koma_calendar_load());  // 週の状況（#T-011。今日の分は JS が足す）
 }
 
 function status_label(string $status): string {

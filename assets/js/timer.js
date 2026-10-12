@@ -843,9 +843,11 @@ function renderWeek(today) {
     const rounded = Math.round(Math.abs(s.diff) * 10);
     const paceCls = rounded === 0 ? 'is-even' : (s.diff > 0 ? 'is-ahead' : 'is-behind');
     const paceTxt = rounded === 0 ? 'ちょうど' : (s.diff > 0 ? `進み +${fmt1(s.diff)} コマ` : `遅れ −${fmt1(-s.diff)} コマ`);
-    const todayOff = w.offDays.includes(w.dow);
+    // 休み・稼働は日付の例外 → 曜日の既定の順で PHP が決めて渡す（#T-014）。今週に稼働日がなければ1日の目標は0（ゼロ除算しない）
+    const todayOff = !!w.todayOff;
+    const offWeek  = w.workDays === 0;
     let need = '';
-    if (!reached) {
+    if (!reached && !offWeek) {
         need = w.remainWorkDays > 0
             ? `残り稼働日 ${w.remainWorkDays}日${todayOff ? '（今日は休み）' : '（今日を含む）'}で 1日 <b>${fmt1(s.need)}</b> コマ必要`
             : '今週の稼働日は終わりました';
@@ -853,9 +855,12 @@ function renderWeek(today) {
     const html = `<div class="week-stat__main">今週 <b>${fmt1(s.done)}</b> / ${w.goal} コマ`
         + `<span class="week-stat__rest${reached ? ' is-reached' : ''}">${reached ? '達成' : `あと ${fmt1(s.rest)}`}</span></div>`
         + `<div class="meter"><div class="meter__fill" style="width:${Math.min(100, s.done / w.goal * 100)}%"></div></div>`
-        + `<div class="week-stat__pace ${paceCls}">ペース <b>${paceTxt}</b></div>`
-        + `<div class="week-stat__note">昨日までの目標 ${fmt1(s.target)} コマ（1日 ${fmt1(w.perDay)} × 稼働 ${w.elapsedWorkDays}日）</div>`
-        + (need ? `<div class="week-stat__note">${need}</div>` : '');
+        + (offWeek
+            ? `<div class="week-stat__pace is-even">今週は休み</div>`
+              + `<div class="week-stat__note">稼働日がないので1日の目標は 0 コマ。休みの日の作業は実績にだけ入ります</div>`
+            : `<div class="week-stat__pace ${paceCls}">ペース <b>${paceTxt}</b></div>`
+              + `<div class="week-stat__note">昨日までの目標 ${fmt1(s.target)} コマ（1日 ${fmt1(w.perDay)} × 稼働 ${w.elapsedWorkDays}日）</div>`
+              + (need ? `<div class="week-stat__note">${need}</div>` : ''));
     if (html !== _weekHtml) el.innerHTML = _weekHtml = html;
 }
 

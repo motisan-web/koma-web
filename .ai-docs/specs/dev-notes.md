@@ -63,12 +63,17 @@
 
 ## 週の状況（トップのサイドバー先頭。#T-011）
 - 週は日曜始まり。目標コマ数（デフォルト30）と休みの曜日（デフォルト木・金）を `settings.php` で変える。設定キーは `data/config.json` の `week_goal`（整数 1〜200）と `week_off_days`（0=日〜6=土の整数の配列。7日すべて休みは不可）。キーがなければデフォルトで動く。範囲外・不正値は `koma_week_goal()` / `koma_week_off_days()` でデフォルトに戻る（設定画面は保存せずエラー表示）。
-- 稼働日 = 休みの曜日以外。1日の目標 = 週の目標 ÷ 稼働日数（30 ÷ 5 = 6）。
+- 稼働日・休みは、その週（日曜〜土曜）の各日について「日付の例外（`data/calendar.json`。#T-014）→ 曜日の既定（`week_off_days`）」の順で決める。1日の目標 = 週の目標 ÷ その週の稼働日数（30 ÷ 5 = 6）。その週に稼働日が0なら1日の目標は0（ゼロ除算しない）で、パネルは「今週は休み」を出す（必要ペースは出さない）。次週以降の例外は今週の表示に影響しない（今週の日付だけを見る）。過去の週も日付の例外をそのまま使う。
 - 「今週 X / 目標（あと Y）」: X は日曜〜今日のコマ数の合計（`koma_daily_all()` / `koma_value()` と同じ数え方）。Y = max(0, 目標 − X)。到達したら「達成」。
-- ペース: 昨日までの目標累計 = 1日の目標 × 日曜〜昨日の稼働日数。差 = X − 目標累計。正なら「進み」、負なら「遅れ」、小数1桁で0なら「ちょうど」。休みの曜日に作業した分は目標累計に足さず X にだけ入る（前倒し）。
+- ペース: 昨日までの目標累計 = 1日の目標 × 日曜〜昨日の稼働日数。差 = X − 目標累計。正なら「進み」、負なら「遅れ」、小数1桁で0なら「ちょうど」。休みの日（例外で休みにした日を含む）に作業した分は目標累計に足さず X にだけ入る（前倒し）。昨日までの稼働日数・残り稼働日数も、日付の例外込みで数える。
 - 未達のときは「残り稼働日（今日が稼働日なら今日を含む。休みなら含めない）で1日あたり (目標 − X) ÷ 残り稼働日 コマ必要」を出す。残り稼働日が0なら「今週の稼働日は終わりました」。
-- PHP と JS の分担: `koma_week_status()`（`includes/koma_stats.php`）が今日を除く今週の合計（`pastWeekTotal`）・稼働日数・昨日までの稼働日数（`elapsedWorkDays`）・残り稼働日数（`remainWorkDays`）などを `CFG.homeStats.week` で渡す。JS の `renderWeek()` / `weekStatus()`（`timer.js`）が今日の分（`todayKoma()`）を足して `updateSummary()` から毎秒描き直す。前日の未完了コマは今日の分に含めない。**差・必要ペースの規則は PHP と JS（`weekStatus()`）の両方にあるので、変えるときは両方直す。**
+- PHP と JS の分担: `koma_week_status()`（`includes/koma_stats.php`。日付の例外は `koma_calendar_load()` から読む）が今日を除く今週の合計（`pastWeekTotal`）・その週の稼働日数（`workDays`）・昨日までの稼働日数（`elapsedWorkDays`）・残り稼働日数（`remainWorkDays`）・今日が休みか（`todayOff`）・1日の目標（`perDay`）などを `CFG.homeStats.week` で渡す。JS は休みの判定を持たず、これらの値だけを使う。JS の `renderWeek()` / `weekStatus()`（`timer.js`）が今日の分（`todayKoma()`）を足して `updateSummary()` から毎秒描き直す。前日の未完了コマは今日の分に含めない。**差・必要ペースの規則は PHP と JS（`weekStatus()`）の両方にあるので、変えるときは両方直す。**
 - お知らせの「ウィークリー30まで」（`info-week`。実績の判定。目標は30固定・締め切り土曜）とは別物。週の目標を設定で変えても、ウィークリー30の実績条件は変わらない。表示は `.week-stat*` クラス（`.info-row` はお知らせ専用）。
+## カレンダー（休み・稼働日の登録。#T-014）
+- 日付単位の例外は `data/calendar.json`（git 管理外・HTTP 遮断済み）。形式 `{"2026-10-15": "work", "2026-10-17": "off"}`。値は `off`（休み）/ `work`（稼働）で、曜日の既定（`week_off_days`）より日付の値が優先する。例外を消す＝キーを消す（既定に戻る）。読み書きは `includes/calendar.php`（`koma_calendar_load()` / `koma_calendar_set()` / `koma_day_is_off()`）。登録できる件数は5000まで。
+- 人間の入力は専用ページ `calendar.php`（ヘッダーのナビ「カレンダー」。トップのカレンダーとは別）。月表示で日付をクリックすると 既定 → 休み → 稼働 → 既定 と切り替わり、`api/timer.php` の `set_day_type`（`date` / `type`: `off` / `work` / `default`。slot 不要でログイン認証・既存の流儀）で保存する。見た目は、稼働（既定）= 無地、休み（曜日の既定）= 灰色・点線、休み（日付で登録）= 赤、稼働（日付で登録）= 緑。ラベル文字も付けて色だけに頼らない。
+- Claude からは `api/claude.php` の `calendar`（取得）/ `set_day_type`（登録・解除）。仕様は `specs/claude-api.md`。
+
 ## フロントエンド（`assets/js/timer.js`）
 - `CFG.serverNow`: PHP がレンダリング時のサーバー時刻（ms）を出力。`_clockOffset = CFG.serverNow - Date.now()` でブラウザとのズレを補正し `liveElapsed` に使う。
 - `prevKey(date, slot)` は `"YYYYMMDD s スロット番号"` 形式（例: `"20260418s7"`）— CSS セレクター用。

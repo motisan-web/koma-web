@@ -5,6 +5,7 @@
 
 require_once __DIR__ . '/data.php';
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/calendar.php';
 
 // これ以上の分数のコマは放置などによる異常値とみなす（#T-003）
 define('KOMA_ANOMALY_MINUTES', 1000);
@@ -261,9 +262,9 @@ function koma_stats_records(?int $now = null): array {
 }
 
 // ---- 週の状況（#T-011。トップの「週の状況」パネル） ----
-// 週は日曜始まり。曜日は 0（日）〜6（土）。休みの曜日以外が稼働日。
-// 1日の目標 = 週の目標 ÷ 稼働日数。遅れ/進み = 今日を含む実績 − 1日の目標 × 今週の日曜〜昨日の稼働日数。
-// 休みの曜日の作業は目標累計に足さず実績にだけ入る（前倒し）。
+// 週は日曜始まり。曜日は 0（日）〜6（土）。その週の各日が稼働日か休みかは「日付の例外（data/calendar.json。#T-014）→ 曜日の既定（week_off_days）」の順で決める。
+// 1日の目標 = 週の目標 ÷ その週の稼働日数（稼働日が0なら 0。ゼロ除算しない）。遅れ/進み = 今日を含む実績 − 1日の目標 × 今週の日曜〜昨日の稼働日数。
+// 休みの日の作業は目標累計に足さず実績にだけ入る（前倒し）。次週以降の例外は今週に影響しない（今週の日付だけを見る）。
 // 今日の分は JS（timer.js の renderWeek()）が毎秒足し直す。PHP と JS で同じ規則を持つので、変えるときは両方直す。
 
 const KOMA_WEEK_GOAL_DEFAULT = 30;
@@ -299,15 +300,18 @@ function koma_week_start(string $date): string {
 
 /**
  * 週の状況の材料。今日の分は含めない（JS が足す）。
- * 返り値: goal / offDays / workDays（稼働日数）/ perDay（1日の目標）/ dow（今日の曜日）/
+ * $calendar は日付の例外（koma_calendar_load() の値。null なら読み込む）。
+ * 返り値: goal / offDays（曜日の既定の休み）/ workDays（その週の稼働日数）/ perDay（1日の目標。稼働日0なら0）/
+ *   dow（今日の曜日）/ todayOff（今日が休みか。日付の例外込み）/ days（日曜〜土曜の [date, off]）/
  *   pastWeekTotal（日曜〜昨日のコマ数）/ elapsedWorkDays（日曜〜昨日の稼働日数）/
  *   remainWorkDays（今日〜土曜の稼働日数。今日が休みなら今日は含めない）/ weekStart
  */
-function koma_week_status(array $daily, string $today, array $config): array {
+function koma_week_status(array $daily, string $today, array $config, ?array $calendar = null): array {
+    $calendar ??= koma_calendar_load();
     $goal = koma_week_goal($config['week_goal'] ?? null);
     $off  = koma_week_off_days($config['week_off_days'] ?? null);
-    $work = 7 - count($off);
-    $dow  = (int)(new DateTime($today, new DateTimeZone('Asia/Tokyo')))->format('w');
+    $tz   = new DateTimeZone('Asia/Tokyo');
+    $dow  = (int)(new DateTime($today, $tz))->format('w');
     $start = koma_week_start($today);
 
     $past = 0.0;
@@ -316,16 +320,24 @@ function koma_week_status(array $daily, string $today, array $config): array {
     }
     $elapsed = 0;
     $remain  = 0;
+    $work    = 0;
+    $days    = [];
     for ($w = 0; $w < 7; $w++) {
-        if (in_array($w, $off, true)) continue;
-        if ($w < $dow) $elapsed++; else $remain++;
+        $date  = (new DateTime($start, $tz))->modify("+{$w} days")->format('Y-m-d');
+        $isOff = koma_day_is_off($date, $off, $calendar);
+        $days[] = ['date' => $date, 'off' => $isOff];
+        if ($isOff) continue;
+        $work++;
+        if ($date < $today) $elapsed++; else $remain++;
     }
     return [
         'goal'           => $goal,
         'offDays'        => $off,
         'workDays'       => $work,
-        'perDay'         => $goal / $work,
+        'perDay'         => $work > 0 ? $goal / $work : 0.0,
         'dow'            => $dow,
+        'todayOff'       => koma_day_is_off($today, $off, $calendar),
+        'days'           => $days,
         'weekStart'      => $start,
         'pastWeekTotal'  => $past,
         'elapsedWorkDays'=> $elapsed,
@@ -336,7 +348,8 @@ function koma_week_status(array $daily, string $today, array $config): array {
 /**
  * 週の状況に今日の分を足した進捗（#T-013。api/claude.php 用。トップの JS の weekStatus() と同じ規則）。
  * $w は koma_week_status() の返り値、$today は今日のコマ数。
- * 返り値: done（今週の合計）/ rest（目標までの残り）/ reached / target（昨日までの目標累計）/ diff（実績 − 目標累計）/
+ * 稼働日が0の週（offWeek）は1日の目標が0なので target = 0、diff = 実績（休みの日の作業は前倒しとして進みに入る）。
+ * 返り値: done（今週の合計）/ rest（目標までの残り）/ reached / offWeek / target（昨日までの目標累計）/ diff（実績 − 目標累計）/
  *   pace（'ahead' | 'behind' | 'even'。小数1桁で0なら even）/ need（未達で残り稼働日があるとき、1日あたりの必要コマ数。それ以外は null）
  */
 function koma_week_progress(array $w, float $today): array {
@@ -349,6 +362,7 @@ function koma_week_progress(array $w, float $today): array {
         'done'    => $done,
         'rest'    => $rest,
         'reached' => $rest <= 0,
+        'offWeek' => (int)$w['workDays'] === 0,
         'target'  => $target,
         'diff'    => $diff,
         'pace'    => $rounded === 0 ? 'even' : ($diff > 0 ? 'ahead' : 'behind'),
