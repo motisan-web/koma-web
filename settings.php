@@ -2,6 +2,7 @@
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/user.php';
 require_once __DIR__ . '/includes/hook.php';
+require_once __DIR__ . '/includes/koma_stats.php';
 require_once __DIR__ . '/includes/auth.php';
 auth_require_page();
 
@@ -10,6 +11,7 @@ $config      = load_config();
 $saved       = false;
 $saveError   = '';
 $testResult  = null;
+$weekError   = '';
 
 // Handle save
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -19,8 +21,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $komaDur    = max(10, min(480, (int)($_POST['koma_duration_minutes'] ?? 80)));
         $maxDur     = max($komaDur, min(480, (int)($_POST['max_duration_minutes'] ?? 100)));
 
-        $hooks = $config['hooks'];
-        foreach (array_keys($hooks) as $event) {
+        // 週の目標（#T-011）: 範囲外・不正値は保存せず、前の値のまま
+        $weekGoal = $config['week_goal'];
+        $rawGoal  = trim((string)($_POST['week_goal'] ?? ''));
+        if (preg_match('/^\d+$/', $rawGoal) && (int)$rawGoal >= KOMA_WEEK_GOAL_MIN && (int)$rawGoal <= KOMA_WEEK_GOAL_MAX) {
+            $weekGoal = (int)$rawGoal;
+        } else {
+            $weekError = '週の目標コマ数は ' . KOMA_WEEK_GOAL_MIN . '〜' . KOMA_WEEK_GOAL_MAX . ' の整数で入力してください（保存していません）。';
+        }
+        $weekOff = array_values(array_unique(array_map('intval', array_filter(
+            (array)($_POST['week_off_days'] ?? []),
+            fn($d) => is_string($d) && preg_match('/^[0-6]$/', $d)
+        ))));
+        sort($weekOff);
+        if (count($weekOff) >= 7) {
+            $weekError .= ($weekError ? ' ' : '') . '休みの曜日は、少なくとも1日は稼働日にしてください（保存していません）。';
+            $weekOff = koma_week_off_days($config['week_off_days']);
+        }
+
+        $hooks = $config['hooks'];        foreach (array_keys($hooks) as $event) {
             $hooks[$event]['url']     = trim($_POST["hook_{$event}_url"] ?? '');
             $hooks[$event]['method']  = in_array($_POST["hook_{$event}_method"] ?? '', ['GET', 'POST']) ? $_POST["hook_{$event}_method"] : 'GET';
             $hooks[$event]['enabled'] = isset($_POST["hook_{$event}_enabled"]);
@@ -30,6 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'koma_count'             => $komaCount,
             'koma_duration_minutes'  => $komaDur,
             'max_duration_minutes'   => $maxDur,
+            'week_goal'              => $weekGoal,
+            'week_off_days'          => $weekOff,
             'hooks'                  => $hooks,
         ]);
 
@@ -86,6 +107,9 @@ $hookLabels = [
     <?php if ($saved): ?>
         <div class="notice notice-success">設定を保存しました。</div>
     <?php endif; ?>
+    <?php if ($weekError): ?>
+        <div class="notice notice-error"><?= htmlspecialchars($weekError) ?></div>
+    <?php endif; ?>
     <?php if ($saveError): ?>
         <div class="notice notice-error"><?= htmlspecialchars($saveError) ?></div>
     <?php endif; ?>
@@ -120,6 +144,28 @@ $hookLabels = [
             <div class="form-row">
                 <label>最大時間（分）— この時間で 100分 hook を送る（自動完了はしない）</label>
                 <input type="number" name="max_duration_minutes" value="<?= (int)$config['max_duration_minutes'] ?>" min="10" max="480" style="width:100px;">
+            </div>
+        </div>
+
+        <!-- 週の状況（#T-011） -->
+        <div class="card">
+            <div class="card__title">週の状況</div>
+            <div class="form-row">
+                <label>1週間の目標コマ数（1〜200）</label>
+                <input type="number" name="week_goal" value="<?= koma_week_goal($config['week_goal'] ?? null) ?>" min="1" max="200" style="width:100px;">
+            </div>
+            <div class="form-row">
+                <label>休みの曜日 — 休み以外の日で目標を割って1日のペースを出します（少なくとも1日は稼働日）</label>
+                <?php $weekOffNow = koma_week_off_days($config['week_off_days'] ?? null); ?>
+                <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                    <?php foreach (['日', '月', '火', '水', '木', '金', '土'] as $wi => $wl): ?>
+                    <div class="toggle-row">
+                        <input type="checkbox" name="week_off_days[]" value="<?= $wi ?>" id="week-off-<?= $wi ?>"
+                               <?= in_array($wi, $weekOffNow, true) ? 'checked' : '' ?>>
+                        <label for="week-off-<?= $wi ?>" style="font-size:13px;"><?= $wl ?></label>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
         </div>
 

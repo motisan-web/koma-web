@@ -807,6 +807,48 @@ function updateSummary() {
     renderLevelVisual(lv);
     renderProgress(today);
     renderInfo(today);
+    renderWeek(today);
+}
+
+// 週の状況（#T-011）。材料は includes/koma_stats.php の koma_week_status()（CFG.homeStats.week）。
+// 今日を除く今週の合計に今日の分を足して描く。規則を変えるときは PHP 側も直す:
+//   遅れ/進み = 今日を含む実績 − 1日の目標 × 日曜〜昨日の稼働日数（休みの曜日の作業は実績にだけ入る）
+//   必要ペース = (目標 − 実績) ÷ 残り稼働日（今日が稼働日なら今日を含む）
+let _weekHtml = '';
+function weekStatus(w, today) {
+    const done = w.pastWeekTotal + today;
+    const rest = Math.max(0, w.goal - done);
+    const target = w.perDay * w.elapsedWorkDays;
+    return {
+        done, rest, target,
+        diff: done - target,
+        need: rest > 0 && w.remainWorkDays > 0 ? rest / w.remainWorkDays : null,
+    };
+}
+
+function renderWeek(today) {
+    const el = document.getElementById('week-stat');
+    const w  = CFG.homeStats?.week;
+    if (!el || !w) return;
+    const s = weekStatus(w, today);
+    const reached = s.rest <= 0;
+    const rounded = Math.round(Math.abs(s.diff) * 10);
+    const paceCls = rounded === 0 ? 'is-even' : (s.diff > 0 ? 'is-ahead' : 'is-behind');
+    const paceTxt = rounded === 0 ? 'ちょうど' : (s.diff > 0 ? `進み +${fmt1(s.diff)} コマ` : `遅れ −${fmt1(-s.diff)} コマ`);
+    const todayOff = w.offDays.includes(w.dow);
+    let need = '';
+    if (!reached) {
+        need = w.remainWorkDays > 0
+            ? `残り稼働日 ${w.remainWorkDays}日${todayOff ? '（今日は休み）' : '（今日を含む）'}で 1日 <b>${fmt1(s.need)}</b> コマ必要`
+            : '今週の稼働日は終わりました';
+    }
+    const html = `<div class="week-stat__main">今週 <b>${fmt1(s.done)}</b> / ${w.goal} コマ`
+        + `<span class="week-stat__rest${reached ? ' is-reached' : ''}">${reached ? '達成' : `あと ${fmt1(s.rest)}`}</span></div>`
+        + `<div class="meter"><div class="meter__fill" style="width:${Math.min(100, s.done / w.goal * 100)}%"></div></div>`
+        + `<div class="week-stat__pace ${paceCls}">ペース <b>${paceTxt}</b></div>`
+        + `<div class="week-stat__note">昨日までの目標 ${fmt1(s.target)} コマ（1日 ${fmt1(w.perDay)} × 稼働 ${w.elapsedWorkDays}日）</div>`
+        + (need ? `<div class="week-stat__note">${need}</div>` : '');
+    if (html !== _weekHtml) el.innerHTML = _weekHtml = html;
 }
 
 // お知らせ（#T-004）: 0時までの残り・次の今日の実績・ウィークリー30

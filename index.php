@@ -126,6 +126,7 @@ if (!$isEmbed) {
     $homeStats['progress'] = $ach['progress'];
     $anomalies = find_anomaly_komas();  // お知らせ（#T-004）
     $homeStats['daySvgs']  = array_combine(array_column(KOMA_DAY_TIERS, 'key'), array_map(fn($t) => ach_svg($t['key']), KOMA_DAY_TIERS));
+    $homeStats['week']     = koma_week_status($daily, $today, $config);  // 週の状況（#T-011。今日の分は JS が足す）
 }
 
 function status_label(string $status): string {
@@ -365,6 +366,12 @@ function status_class(string $status): string {
     </div><!-- /.home__main -->
 
     <aside class="home__side">
+        <!-- 週の状況（#T-011。JS が今日の分を足して毎秒描く） -->
+        <section class="panel week-panel" id="week-panel">
+            <h2 class="panel__title">週の状況<span class="sub">日曜始まり</span></h2>
+            <div class="week-stat" id="week-stat"></div>
+        </section>
+
         <!-- 実績（アイコンと個数。マウスオーバーで説明と次の条件） -->
         <section class="panel">
             <h2 class="panel__title">実績</h2>

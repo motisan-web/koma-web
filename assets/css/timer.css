@@ -851,6 +851,20 @@ button.ach:hover, button.ach:focus-visible { outline: 2px solid var(--highlight)
 .prog__meta { font-size: 11px; color: var(--text-muted); text-align: right; white-space: nowrap; }
 .prog__row .meter { grid-column: 2 / 4; height: 6px; }
 
+/* 週の状況（#T-011） */
+.week-stat__main { font-size: 13px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.week-stat__main b { font-size: 22px; color: var(--text); font-variant-numeric: tabular-nums; }
+.week-stat__rest { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--highlight); font-variant-numeric: tabular-nums; }
+.week-stat__rest.is-reached { color: var(--green); }
+.week-stat .meter { height: 8px; margin-bottom: 10px; }
+.week-stat__pace { font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
+.week-stat__pace b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.week-stat__pace.is-ahead b { color: var(--green); }
+.week-stat__pace.is-behind b { color: var(--red); }
+.week-stat__pace.is-even b { color: var(--text); }
+.week-stat__note { font-size: 11px; color: var(--text-muted); line-height: 1.6; }
+.week-stat__note b { color: var(--highlight); font-size: 12px; font-variant-numeric: tabular-nums; }
+
 /* お知らせ（#T-004）・宝箱 */
 .copy-md { display: flex; gap: 8px; flex-wrap: wrap; }
 .copy-md .btn { flex: 1; min-width: 72px; padding: 8px 10px; }

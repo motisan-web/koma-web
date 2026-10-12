@@ -219,3 +219,76 @@ function koma_stats_records(?int $now = null): array {
     usort($out, fn($a, $b) => [$a['d'], $a['s']] <=> [$b['d'], $b['s']]);
     return $out;
 }
+
+// ---- 週の状況（#T-011。トップの「週の状況」パネル） ----
+// 週は日曜始まり。曜日は 0（日）〜6（土）。休みの曜日以外が稼働日。
+// 1日の目標 = 週の目標 ÷ 稼働日数。遅れ/進み = 今日を含む実績 − 1日の目標 × 今週の日曜〜昨日の稼働日数。
+// 休みの曜日の作業は目標累計に足さず実績にだけ入る（前倒し）。
+// 今日の分は JS（timer.js の renderWeek()）が毎秒足し直す。PHP と JS で同じ規則を持つので、変えるときは両方直す。
+
+const KOMA_WEEK_GOAL_DEFAULT = 30;
+const KOMA_WEEK_GOAL_MIN     = 1;
+const KOMA_WEEK_GOAL_MAX     = 200;
+const KOMA_WEEK_OFF_DEFAULT  = [4, 5];  // 木・金
+
+/** 目標コマ数を 1〜200 の整数にそろえる。不正値はデフォルト */
+function koma_week_goal($v): int {
+    if (is_string($v) && !preg_match('/^\s*\d+\s*$/', $v)) return KOMA_WEEK_GOAL_DEFAULT;
+    if (!is_int($v) && !is_string($v) && !is_float($v)) return KOMA_WEEK_GOAL_DEFAULT;
+    $n = (int)$v;
+    return ($n >= KOMA_WEEK_GOAL_MIN && $n <= KOMA_WEEK_GOAL_MAX) ? $n : KOMA_WEEK_GOAL_DEFAULT;
+}
+
+/** 休みの曜日（0〜6 の整数の配列）をそろえる。不正値は除き、7日すべて休みならデフォルト */
+function koma_week_off_days($v): array {
+    if (!is_array($v)) return KOMA_WEEK_OFF_DEFAULT;
+    $out = [];
+    foreach ($v as $d) {
+        if ((is_int($d) || (is_string($d) && preg_match('/^[0-6]$/', $d))) && (int)$d >= 0 && (int)$d <= 6) $out[(int)$d] = true;
+    }
+    $out = array_keys($out);
+    sort($out);
+    return count($out) >= 7 ? KOMA_WEEK_OFF_DEFAULT : $out;
+}
+
+/** その週の日曜の日付（Y-m-d） */
+function koma_week_start(string $date): string {
+    $d = new DateTime($date, new DateTimeZone('Asia/Tokyo'));
+    return $d->modify('-' . (int)$d->format('w') . ' days')->format('Y-m-d');
+}
+
+/**
+ * 週の状況の材料。今日の分は含めない（JS が足す）。
+ * 返り値: goal / offDays / workDays（稼働日数）/ perDay（1日の目標）/ dow（今日の曜日）/
+ *   pastWeekTotal（日曜〜昨日のコマ数）/ elapsedWorkDays（日曜〜昨日の稼働日数）/
+ *   remainWorkDays（今日〜土曜の稼働日数。今日が休みなら今日は含めない）/ weekStart
+ */
+function koma_week_status(array $daily, string $today, array $config): array {
+    $goal = koma_week_goal($config['week_goal'] ?? null);
+    $off  = koma_week_off_days($config['week_off_days'] ?? null);
+    $work = 7 - count($off);
+    $dow  = (int)(new DateTime($today, new DateTimeZone('Asia/Tokyo')))->format('w');
+    $start = koma_week_start($today);
+
+    $past = 0.0;
+    foreach ($daily as $date => $d) {
+        if ($date >= $start && $date < $today) $past += $d['koma'];
+    }
+    $elapsed = 0;
+    $remain  = 0;
+    for ($w = 0; $w < 7; $w++) {
+        if (in_array($w, $off, true)) continue;
+        if ($w < $dow) $elapsed++; else $remain++;
+    }
+    return [
+        'goal'           => $goal,
+        'offDays'        => $off,
+        'workDays'       => $work,
+        'perDay'         => $goal / $work,
+        'dow'            => $dow,
+        'weekStart'      => $start,
+        'pastWeekTotal'  => $past,
+        'elapsedWorkDays'=> $elapsed,
+        'remainWorkDays' => $remain,
+    ];
+}
