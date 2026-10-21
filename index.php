@@ -375,6 +375,9 @@ function status_class(string $status): string {
             <div class="week-stat" id="week-stat"></div>
         </section>
 
+        <!-- ステージ（#T-015。週の目標の可視化。JS が描く） -->
+        <section class="panel stage-panel" id="stage-panel" aria-label="今週のステージ"></section>
+
         <!-- 実績（アイコンと個数。マウスオーバーで説明と次の条件） -->
         <section class="panel">
             <h2 class="panel__title">実績</h2>

@@ -1063,3 +1063,47 @@ button.ach:hover, button.ach:focus-visible { outline: 2px solid var(--highlight)
 .koma-edit-form label .project-field { flex-direction: row; }
 .koma-edit-form .project-field input { padding: 6px 8px 6px 0; }
 .koma-edit-form .project-field__prefix { padding-left: 8px; font-size: 13px; }
+
+/* ---- ステージ表示（#T-015。週の目標の可視化。中身は timer.js の renderStage()） ---- */
+.stage-panel { padding: 0; overflow: hidden; }
+.stage-head { display: flex; align-items: baseline; gap: 8px; padding: 12px 14px 0; }
+.stage-title { font-size: 15px; font-weight: 700; margin: 0; }
+.stage-range { font-size: 12px; color: var(--text-muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+.stage-off { padding: 14px; font-size: 13px; color: var(--text-muted); }
+.stage-art { position: relative; margin: 8px 10px 0; border-radius: 14px; overflow: hidden;
+    background: linear-gradient(180deg, #3a3a86 0%, #6a4aa8 45%, #d77f86 100%); }
+:root[data-theme="light"] .stage-art { background: linear-gradient(180deg, #8fb6ee 0%, #b9a5e6 50%, #f3b7b0 100%); }
+.stage-art svg { display: block; width: 100%; height: auto; }
+.stage-art__no { position: absolute; right: 12px; bottom: 8px; font-size: 12px; font-weight: 800; letter-spacing: .08em; color: rgba(255,255,255,.85); text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.stage-art__badge { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); font-size: 11px; font-weight: 800;
+    background: #ffd54a; color: #5a3b00; padding: 2px 10px; border-radius: 999px; box-shadow: 0 2px 6px rgba(0,0,0,.3); display: none; }
+.stage-art.is-cleared .stage-art__badge { display: block; }
+
+.stage-missions { margin: 10px 10px 0; padding: 8px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-soft); }
+.stage-mission { position: relative; border-radius: 999px; overflow: hidden; background: var(--bg-input); border: 1px solid var(--border); height: 34px; display: flex; align-items: center; padding: 0 12px; gap: 8px; font-size: 12.5px; font-weight: 700; }
+.stage-mission__fill { position: absolute; inset: 0 auto 0 0; background: var(--highlight); opacity: .85; transition: width .3s; }
+.stage-mission > :not(.stage-mission__fill) { position: relative; }
+.stage-mission__ic { width: 18px; height: 18px; flex: none; }
+.stage-mission__txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); text-shadow: 0 0 3px var(--bg-card); }
+.stage-mission__go { flex: none; font-variant-numeric: tabular-nums; }
+.stage-mission.is-clear { border-color: var(--highlight); }
+.stage-mission.is-clear .stage-mission__fill { opacity: 1; }
+.stage-sub { text-align: right; font-size: 12px; color: var(--text-muted); margin: 3px 6px 7px; font-variant-numeric: tabular-nums; }
+.stage-sub.is-clear { color: var(--highlight); font-weight: 700; }
+.stage-missions > .stage-sub:last-child { margin-bottom: 0; }
+
+/* 今日のコマ（ピクミンのキノコの代わり） */
+.stage-dots { display: flex; gap: 5px; flex-wrap: wrap; margin: 8px 6px 2px; }
+.stage-dots i { width: 22px; height: 22px; border-radius: 50%; background: var(--bg-input); border: 2px solid var(--border); display: block; }
+.stage-dots i.is-on { background: var(--highlight); border-color: var(--highlight); box-shadow: inset 0 -4px 0 rgba(0,0,0,.12); }
+.stage-dots i.is-half { background: linear-gradient(90deg, var(--highlight) 50%, var(--bg-input) 50%); border-color: var(--highlight); }
+
+/* 稼働日ごとの札（色だけに頼らず「達成 / 未達」の文字も出す） */
+.stage-days { display: flex; gap: 6px; padding: 12px 10px 14px; }
+.stage-day { flex: 1; min-width: 0; text-align: center; font-size: 11px; line-height: 1.35; padding: 4px 2px; border-radius: 8px; border: 1px solid var(--border); color: var(--text-muted); background: var(--bg-card); }
+.stage-day b { display: block; font-size: 13px; color: var(--text); font-variant-numeric: tabular-nums; }
+.stage-day.is-ok { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+.stage-day.is-ok b { color: var(--green); }
+.stage-day.is-today { outline: 2px solid var(--highlight); outline-offset: 1px; }
+.stage-day.is-miss { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+.stage-day.is-miss b { color: var(--red); }

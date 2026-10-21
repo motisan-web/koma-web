@@ -47,6 +47,7 @@
 │   ├── auth.json     # アカウント（git 管理外）
 │   └── sessions/YYYY/MM-DD/data.json
 ├── assets/css/timer.css
+├── assets/img/       # ステージ表示のキャラクター（仮画像）
 └── assets/js/timer.js
 ```
 

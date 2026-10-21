@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 56" width="44" height="56">
+  <!-- ステージ表示用の仮キャラクター（あとで差し替える） -->
+  <ellipse cx="22" cy="53" rx="12" ry="3" fill="#000" opacity=".18"/>
+  <rect x="12" y="24" width="20" height="24" rx="8" fill="#e8553f"/>
+  <rect x="15" y="44" width="5" height="9" rx="2" fill="#4a3b52"/>
+  <rect x="24" y="44" width="5" height="9" rx="2" fill="#4a3b52"/>
+  <circle cx="22" cy="17" r="11" fill="#ffd9b8"/>
+  <path d="M10.5 15a11.5 11.5 0 0 1 23 0z" fill="#3b3b4f"/>
+  <rect x="10" y="13" width="24" height="4" rx="2" fill="#4c4c66"/>
+  <circle cx="18" cy="20" r="1.4" fill="#3b3b4f"/>
+  <circle cx="26" cy="20" r="1.4" fill="#3b3b4f"/>
+  <path d="M19.5 24c1.5 1.4 3.5 1.4 5 0" stroke="#3b3b4f" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+</svg>

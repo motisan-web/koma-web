@@ -302,7 +302,7 @@ function koma_week_start(string $date): string {
  * 週の状況の材料。今日の分は含めない（JS が足す）。
  * $calendar は日付の例外（koma_calendar_load() の値。null なら読み込む）。
  * 返り値: goal / offDays（曜日の既定の休み）/ workDays（その週の稼働日数）/ perDay（1日の目標。稼働日0なら0）/
- *   dow（今日の曜日）/ todayOff（今日が休みか。日付の例外込み）/ days（日曜〜土曜の [date, off]）/
+ *   dow（今日の曜日）/ todayOff（今日が休みか。日付の例外込み）/ days（日曜〜土曜の [date, off, koma]。koma は今日より前だけ）/ stage（ステージ番号）/
  *   pastWeekTotal（日曜〜昨日のコマ数）/ elapsedWorkDays（日曜〜昨日の稼働日数）/
  *   remainWorkDays（今日〜土曜の稼働日数。今日が休みなら今日は含めない）/ weekStart
  */
@@ -325,7 +325,8 @@ function koma_week_status(array $daily, string $today, array $config, ?array $ca
     for ($w = 0; $w < 7; $w++) {
         $date  = (new DateTime($start, $tz))->modify("+{$w} days")->format('Y-m-d');
         $isOff = koma_day_is_off($date, $off, $calendar);
-        $days[] = ['date' => $date, 'off' => $isOff];
+        // 今日以降は 0（今日の分は JS が足す）。ステージ表示（#T-015）が日ごとの達成を描くのに使う
+        $days[] = ['date' => $date, 'off' => $isOff, 'koma' => $date < $today ? round($daily[$date]['koma'] ?? 0, 2) : 0];
         if ($isOff) continue;
         $work++;
         if ($date < $today) $elapsed++; else $remain++;
@@ -339,6 +340,7 @@ function koma_week_status(array $daily, string $today, array $config, ?array $ca
         'todayOff'       => koma_day_is_off($today, $off, $calendar),
         'days'           => $days,
         'weekStart'      => $start,
+        'stage'          => koma_stage_number($daily, $start),
         'pastWeekTotal'  => $past,
         'elapsedWorkDays'=> $elapsed,
         'remainWorkDays' => $remain,
@@ -368,4 +370,35 @@ function koma_week_progress(array $w, float $today): array {
         'pace'    => $rounded === 0 ? 'even' : ($diff > 0 ? 'ahead' : 'behind'),
         'need'    => ($rest > 0 && $w['remainWorkDays'] > 0) ? $rest / $w['remainWorkDays'] : null,
     ];
+}
+
+/** ステージ番号（#T-015）。最初にコマを記録した週を1とする通し番号。記録がまだなければ今週が1 */
+function koma_stage_number(array $daily, string $weekStart): int {
+    $first = $weekStart;
+    foreach ($daily as $date => $d) {
+        if ($d['koma'] > 0) { $first = koma_week_start($date); break; }
+    }
+    $tz = new DateTimeZone('Asia/Tokyo');
+    $diff = (new DateTime($first, $tz))->diff(new DateTime($weekStart, $tz))->days;
+    return intdiv(max(0, (int)$diff), 7) + 1;
+}
+
+/**
+ * その週のステージをクリアしたか（#T-015）。その週の稼働日（日付の例外 → 曜日の既定）のすべてで
+ * 1日の目標（週の目標 ÷ 稼働日）以上のコマ数があること。稼働日が0の週はクリアにならない。
+ * 休みの日の作業は数えない。目標・休みの曜日・日付の例外は今の設定で判定する（過去の週も同じ）。
+ */
+function koma_week_cleared(array $daily, string $weekStart, int $goal, array $off, array $calendar): bool {
+    $tz = new DateTimeZone('Asia/Tokyo');
+    $dates = [];
+    for ($w = 0; $w < 7; $w++) {
+        $date = (new DateTime($weekStart, $tz))->modify("+{$w} days")->format('Y-m-d');
+        if (!koma_day_is_off($date, $off, $calendar)) $dates[] = $date;
+    }
+    if (!$dates) return false;
+    $perDay = $goal / count($dates);
+    foreach ($dates as $date) {
+        if (($daily[$date]['koma'] ?? 0) < $perDay - 1e-9) return false;
+    }
+    return true;
 }

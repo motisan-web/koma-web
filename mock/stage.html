@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="ja" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ステージ表示モック — コマタイマー</title>
+<!-- T-015: サイドバー「ステージ」表示のモック（ローカル専用・データはすべてサンプル）。色は本物の timer.css の変数を使う -->
+<link rel="stylesheet" href="../assets/css/timer.css">
+<style>
+body { padding: 20px 16px 60px; }
+.layout { max-width: 760px; margin: 0 auto; display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 700px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- モック用の操作パネル ---- */
+.ctl { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; font-size: 13px; }
+.ctl h2 { margin: 0 0 10px; font-size: 14px; }
+.ctl label { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--text-muted); }
+.ctl label span { min-width: 7em; }
+.ctl input[type=number], .ctl select { background: var(--bg-input); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; width: 5em; }
+.ctl input[type=range] { flex: 1; }
+.ctl .note { font-size: 12px; color: var(--text-dim); line-height: 1.7; margin: 8px 0 0; }
+
+/* ---- ステージパネル（本番はサイドバー先頭の週の状況の下に置く想定） ---- */
+.stage-panel { padding: 0; overflow: hidden; }
+.stage-panel__head { display: flex; align-items: baseline; gap: 8px; padding: 12px 14px 0; }
+.stage-panel__title { font-size: 15px; font-weight: 700; margin: 0; }
+.stage-panel__range { font-size: 12px; color: var(--text-muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+
+.stage { position: relative; margin: 8px 10px 0; border-radius: 14px; overflow: hidden;
+    background: linear-gradient(180deg, #3a3a86 0%, #6a4aa8 45%, #d77f86 100%); }
+:root[data-theme="light"] .stage { background: linear-gradient(180deg, #8fb6ee 0%, #b9a5e6 50%, #f3b7b0 100%); }
+.stage svg { display: block; width: 100%; height: auto; }
+.stage__no { position: absolute; right: 12px; bottom: 8px; font-size: 12px; font-weight: 800; letter-spacing: .08em; color: rgba(255,255,255,.85); text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.stage__badge { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); font-size: 11px; font-weight: 800;
+    background: #ffd54a; color: #5a3b00; padding: 2px 10px; border-radius: 999px; box-shadow: 0 2px 6px rgba(0,0,0,.3); display: none; }
+.stage.is-cleared .stage__badge { display: block; }
+
+.mission-box { margin: 10px 10px 0; padding: 8px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-soft); }
+.mission { position: relative; border-radius: 999px; overflow: hidden; background: var(--bg-input); border: 1px solid var(--border); height: 34px; display: flex; align-items: center; padding: 0 12px; gap: 8px; font-size: 12.5px; font-weight: 700; }
+.mission__fill { position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); background: var(--highlight); opacity: .85; transition: width .3s; }
+.mission > :not(.mission__fill) { position: relative; }
+.mission__ic { width: 18px; height: 18px; flex: none; }
+.mission__txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); text-shadow: 0 0 3px var(--bg-card); }
+.mission__go { flex: none; font-variant-numeric: tabular-nums; }
+.mission.is-clear { border-color: var(--highlight); }
+.mission.is-clear .mission__fill { opacity: 1; }
+.mission__sub { text-align: right; font-size: 12px; color: var(--text-muted); margin: 3px 6px 7px; font-variant-numeric: tabular-nums; }
+.mission__sub.is-clear { color: var(--highlight); font-weight: 700; }
+.mission__sub:last-child { margin-bottom: 0; }
+
+/* 今日のコマ（キノコの代わり） */
+.koma-dots { display: flex; gap: 5px; flex-wrap: wrap; margin: 8px 6px 2px; }
+.koma-dots i { width: 22px; height: 22px; border-radius: 50%; background: var(--bg-input); border: 2px solid var(--border); display: block; }
+.koma-dots i.is-on { background: var(--highlight); border-color: var(--highlight); box-shadow: inset 0 -4px 0 rgba(0,0,0,.12); }
+.koma-dots i.is-half { background: linear-gradient(90deg, var(--highlight) 50%, var(--bg-input) 50%); border-color: var(--highlight); }
+
+/* 日ごとの小さな札 */
+.days { display: flex; gap: 6px; padding: 12px 10px 14px; }
+.day { flex: 1; min-width: 0; text-align: center; font-size: 11px; line-height: 1.35; padding: 4px 2px; border-radius: 8px; border: 1px solid var(--border); color: var(--text-muted); background: var(--bg-card); }
+.day b { display: block; font-size: 13px; color: var(--text); font-variant-numeric: tabular-nums; }
+.day.is-ok { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+.day.is-ok b { color: var(--green); }
+.day.is-today { outline: 2px solid var(--highlight); outline-offset: 1px; }
+.day.is-miss { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+.day.is-miss b { color: var(--red); }
+</style>
+</head>
+<body>
+<div class="layout">
+    <aside>
+        <section class="panel stage-panel" id="stage-panel" aria-label="今週のステージ">
+            <div class="stage-panel__head">
+                <h2 class="stage-panel__title">ステージ <span id="st-no">7</span></h2>
+                <span class="stage-panel__range" id="st-range"></span>
+            </div>
+            <div class="stage" id="stage">
+                <span class="stage__badge">ステージクリア！</span>
+                <svg id="stage-svg" viewBox="0 0 320 230" role="img" aria-label="">
+                    <title id="stage-title"></title>
+                </svg>
+                <span class="stage__no" id="st-no2"></span>
+            </div>
+
+            <div class="mission-box">
+                <div class="mission" id="m-week">
+                    <div class="mission__fill"></div>
+                    <svg class="mission__ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3" fill="#fff"/><g fill="#fff"><circle cx="10" cy="3.2" r="2.4"/><circle cx="16.5" cy="8" r="2.4"/><circle cx="14" cy="15.6" r="2.4"/><circle cx="6" cy="15.6" r="2.4"/><circle cx="3.5" cy="8" r="2.4"/></g></svg>
+                    <span class="mission__txt" id="m-week-txt"></span>
+                    <span class="mission__go" id="m-week-go"></span>
+                </div>
+                <div class="mission__sub" id="m-week-sub"></div>
+
+                <div class="mission" id="m-day">
+                    <div class="mission__fill"></div>
+                    <svg class="mission__ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 10a8 7 0 0 1 16 0z" fill="#fff"/><rect x="7" y="10" width="6" height="7" rx="2" fill="#fff"/></svg>
+                    <span class="mission__txt" id="m-day-txt"></span>
+                    <span class="mission__go" id="m-day-go"></span>
+                </div>
+                <div class="mission__sub" id="m-day-sub"></div>
+                <div class="koma-dots" id="koma-dots" aria-hidden="true"></div>
+            </div>
+
+            <div class="days" id="days"></div>
+        </section>
+    </aside>
+
+    <section class="ctl">
+        <h2>モックの操作（サンプルデータ）</h2>
+        <label><span>テーマ</span>
+            <select id="c-theme"><option value="dark">ダーク</option><option value="light">ライト</option></select></label>
+        <label><span>ステージ番号</span><input type="number" id="c-stage" min="1" max="999" value="7"></label>
+        <label><span>週の目標（コマ）</span><input type="number" id="c-goal" min="1" max="200" value="30"></label>
+        <label><span>稼働日の数</span>
+            <select id="c-days"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option></select></label>
+        <label><span>今日は何日目</span>
+            <select id="c-today"></select></label>
+        <label><span>今日のコマ数</span><input type="range" id="c-koma" min="0" max="12" step="0.5" value="3.5"><output id="c-koma-o">3.5</output></label>
+        <label><span>過去の日</span>
+            <select id="c-past"><option value="all">すべて達成</option><option value="miss">1日未達あり</option></select></label>
+        <p class="note">
+            ・道は稼働日の数で等分（カレンダーで休みにした日は含めない）。達成した区間に花が咲き、キャラクターは今日の区間にいる。<br>
+            ・「今日のコマ」の丸の数 = 1日の目標（週の目標 ÷ 稼働日。割り切れないときは切り上げて表示し、達成判定は小数のまま）。<br>
+            ・全稼働日で1日の目標に届くと中央の芽が開花して「ステージクリア」。未達の日が1日でもあると、その週は開花しない。<br>
+            ・過去の週の表示はこのモックでは扱っていない。
+        </p>
+    </section>
+</div>
+
+<script>
+(function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var SVGNS = 'http://www.w3.org/2000/svg';
+    var DAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'];
+    // 稼働日の数ごとの曜日の並び（デフォルト: 木・金が休み → 日月火水土、のように見せる）
+    var WORK_SETS = { 1: [1], 2: [1, 2], 3: [1, 2, 3], 4: [1, 2, 3, 4], 5: [0, 1, 2, 3, 6], 6: [0, 1, 2, 3, 4, 6], 7: [0, 1, 2, 3, 4, 5, 6] };
+
+    function rng(seed) { // mulberry32
+        return function () {
+            seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+            var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+            t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+    }
+    function el(name, attrs, parent) {
+        var e = document.createElementNS(SVGNS, name);
+        for (var k in attrs) e.setAttribute(k, attrs[k]);
+        if (parent) parent.appendChild(e);
+        return e;
+    }
+    function fmt(n) { return (Math.round(n * 10) / 10).toString(); }
+
+    // 楕円（道）の座標。a0 は始点の角度（左から時計回り）
+    var CX = 160, CY = 98, RX = 98, RY = 49, A0 = Math.PI;
+    function pt(theta, dr) {
+        dr = dr || 0;
+        return [CX + (RX + dr) * Math.cos(theta), CY + (RY + dr * RY / RX) * Math.sin(theta)];
+    }
+    function arcPath(t0, t1) {
+        var d = '', steps = Math.max(2, Math.ceil((t1 - t0) / 0.08));
+        for (var i = 0; i <= steps; i++) {
+            var p = pt(t0 + (t1 - t0) * i / steps);
+            d += (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1);
+        }
+        return d;
+    }
+
+    function draw() {
+        var stageNo = +$('c-stage').value || 1;
+        var goal    = +$('c-goal').value || 30;
+        var n       = +$('c-days').value;
+        var todayIx = Math.min(+$('c-today').value, n - 1);
+        var todayK  = +$('c-koma').value;
+        var perDay  = goal / n;
+        var perDayShow = Math.ceil(perDay - 1e-9);
+        var past    = $('c-past').value;
+
+        // 日ごとのコマ数（過去は達成済み／1日だけ未達、今日は操作値、未来は0）
+        var ko = [], missIx = past === 'miss' ? Math.min(1, todayIx - 1) : -1;
+        for (var i = 0; i < n; i++) {
+            if (i < todayIx) ko.push(i === missIx ? Math.max(0, perDay - 2) : perDay + (i % 2 ? 0.5 : 0));
+            else if (i === todayIx) ko.push(todayK);
+            else ko.push(0);
+        }
+        var ok = ko.map(function (k) { return k >= perDay - 1e-9; });
+        var weekTotal = ko.reduce(function (a, b) { return a + b; }, 0);
+        var cleared = ok.every(Boolean);
+
+        $('st-no').textContent = stageNo;
+        $('st-no2').textContent = 'ステージ' + stageNo;
+        $('st-range').textContent = '10/18 – 10/24';
+        $('stage').classList.toggle('is-cleared', cleared);
+        $('c-koma-o').textContent = fmt(todayK);
+
+        // ---- ステージの絵 ----
+        var svg = $('stage-svg');
+        var keep = $('stage-title');
+        Array.prototype.slice.call(svg.childNodes).forEach(function (c) { if (c !== keep) svg.removeChild(c); });
+        svg.setAttribute('aria-label', 'ステージ' + stageNo + '。稼働日' + n + '日のうち' + ok.filter(Boolean).length + '日達成');
+        $('stage-title').textContent = svg.getAttribute('aria-label');
+
+        // 星
+        var rs = rng(stageNo * 7 + 3);
+        for (var s = 0; s < 22; s++) el('circle', { cx: (rs() * 320).toFixed(1), cy: (rs() * 80).toFixed(1), r: (rs() * 1.1 + .3).toFixed(1), fill: '#fff', opacity: (rs() * .5 + .25).toFixed(2) }, svg);
+
+        // 足場（ひし形・側面・上面）
+        el('polygon', { points: '160,28 304,103 160,178 16,103', fill: '#2f6f2c', stroke: '#2f6f2c', 'stroke-width': 10, 'stroke-linejoin': 'round', transform: 'translate(0 14)' }, svg);
+        el('polygon', { points: '160,28 304,103 160,178 16,103', fill: '#6fcf4f', stroke: '#6fcf4f', 'stroke-width': 10, 'stroke-linejoin': 'round' }, svg);
+        el('polygon', { points: '160,34 292,103 160,172 28,103', fill: '#7bd957', opacity: .55 }, svg);
+
+        // 道の土台（全体）
+        el('ellipse', { cx: CX, cy: CY, rx: RX, ry: RY, fill: 'none', stroke: '#4fa23a', 'stroke-width': 20, opacity: .75 }, svg);
+        el('ellipse', { cx: CX, cy: CY, rx: RX - 38, ry: (RY - 19), fill: '#3f8a31', opacity: .8 }, svg);
+
+        // 区間ごとに：土台・花・仕切り
+        var step = Math.PI * 2 / n, gap = n > 1 ? 0.045 : 0;
+        var charPt = null;
+        for (var i = 0; i < n; i++) {
+            var t0 = A0 + step * i + gap, t1 = A0 + step * (i + 1) - gap;
+            var prog = Math.max(0, Math.min(1, ko[i] / perDay));
+            // 今日の区間は縁取りで示す
+            if (i === todayIx) el('path', { d: arcPath(t0, t1), fill: 'none', stroke: '#fff', 'stroke-width': 24, 'stroke-linecap': 'round', opacity: .28 }, svg);
+            el('path', { d: arcPath(t0, t1), fill: 'none', stroke: ok[i] ? '#9a5a97' : '#3c8a30', 'stroke-width': 18, 'stroke-linecap': 'round', opacity: ok[i] ? .55 : .7 }, svg);
+            // 花
+            var tEnd = t0 + (t1 - t0) * prog;
+            var r = rng(stageNo * 131 + i * 17 + 5);
+            var count = Math.round(34 * prog);
+            for (var f = 0; f < count; f++) {
+                var tt = t0 + (tEnd - t0) * (f + r()) / Math.max(1, count);
+                var p = pt(tt, (r() - .5) * 15);
+                var hue = ok[i] ? [318, 330, 300][f % 3] : [330, 345, 310][f % 3];
+                el('circle', { cx: p[0].toFixed(1), cy: p[1].toFixed(1), r: (2 + r() * 1.3).toFixed(1), fill: 'hsl(' + hue + ' 80% ' + (58 + r() * 14).toFixed(0) + '%)' }, svg);
+                if (f % 5 === 0) el('circle', { cx: p[0].toFixed(1), cy: (p[1] - 0.2).toFixed(1), r: 0.9, fill: '#fff6c8' }, svg);
+            }
+            if (i === todayIx) charPt = pt(tEnd, 0);
+        }
+
+        // 中央の芽（全日達成で開花）
+        var sx = CX, sy = CY + 4;
+        el('ellipse', { cx: sx, cy: sy + 2, rx: 17, ry: 7, fill: '#2d6a28' }, svg);
+        el('ellipse', { cx: sx - 7, cy: sy, rx: 6, ry: 3, fill: '#bda88a' }, svg);
+        el('ellipse', { cx: sx + 6, cy: sy + 1, rx: 5, ry: 2.6, fill: '#a99476' }, svg);
+        if (!cleared) {
+            el('path', { d: 'M' + sx + ' ' + sy + 'C' + (sx - 2) + ' ' + (sy - 22) + ' ' + (sx + 1) + ' ' + (sy - 40) + ' ' + sx + ' ' + (sy - 52), stroke: '#b9dc8c', 'stroke-width': 5, fill: 'none', 'stroke-linecap': 'round' }, svg);
+            el('ellipse', { cx: sx, cy: sy - 56, rx: 11, ry: 7, fill: '#cfe8a1' }, svg);
+        } else {
+            el('path', { d: 'M' + sx + ' ' + sy + 'C' + (sx - 2) + ' ' + (sy - 22) + ' ' + (sx + 1) + ' ' + (sy - 34) + ' ' + sx + ' ' + (sy - 44), stroke: '#8fd070', 'stroke-width': 5, fill: 'none', 'stroke-linecap': 'round' }, svg);
+            for (var k = 0; k < 8; k++) {
+                var an = k * Math.PI / 4;
+                el('ellipse', { cx: (sx + 10 * Math.cos(an)).toFixed(1), cy: (sy - 52 + 7 * Math.sin(an)).toFixed(1), rx: 7, ry: 4.5, transform: 'rotate(' + (an * 180 / Math.PI) + ' ' + (sx + 10 * Math.cos(an)).toFixed(1) + ' ' + (sy - 52 + 7 * Math.sin(an)).toFixed(1) + ')', fill: '#ffd0e8' }, svg);
+            }
+            el('circle', { cx: sx, cy: sy - 52, r: 6, fill: '#ffd54a' }, svg);
+        }
+        // 吹き出し（報酬）
+        var bx = sx + 34, by = sy - 62;
+        el('circle', { cx: bx, cy: by, r: 15, fill: '#e9f3f1', stroke: '#fff', 'stroke-width': 2 }, svg);
+        el('path', { d: 'M' + (bx - 8) + ' ' + (by + 12) + 'L' + (bx - 14) + ' ' + (by + 21) + 'L' + (bx - 1) + ' ' + (by + 15) + 'Z', fill: '#e9f3f1' }, svg);
+        var medal = el('g', { opacity: cleared ? 1 : .55 }, svg);
+        el('circle', { cx: bx, cy: by, r: 8.5, fill: cleared ? '#ffc933' : '#b8a874' }, medal);
+        el('path', { d: 'M' + bx + ' ' + (by - 5) + 'L' + (bx + 1.7) + ' ' + (by - 1.5) + 'L' + (bx + 5.4) + ' ' + (by - 1) + 'L' + (bx + 2.7) + ' ' + (by + 1.6) + 'L' + (bx + 3.4) + ' ' + (by + 5.2) + 'L' + bx + ' ' + (by + 3.4) + 'L' + (bx - 3.4) + ' ' + (by + 5.2) + 'L' + (bx - 2.7) + ' ' + (by + 1.6) + 'L' + (bx - 5.4) + ' ' + (by - 1) + 'L' + (bx - 1.7) + ' ' + (by - 1.5) + 'Z', fill: '#fff6d2' }, medal);
+
+        // キャラクター（仮画像。足元が道の上に来るように置く）
+        if (charPt) el('image', { href: '../assets/img/stage-char.svg', x: (charPt[0] - 22).toFixed(1), y: (charPt[1] - 50).toFixed(1), width: 44, height: 56 }, svg);
+
+        // ---- ミッション欄 ----
+        var wp = Math.min(100, weekTotal / goal * 100);
+        var weekDone = weekTotal >= goal - 1e-9;
+        $('m-week').style.setProperty('--p', wp + '%');
+        $('m-week').classList.toggle('is-clear', weekDone);
+        $('m-week-txt').textContent = '今週のコマ ' + fmt(weekTotal) + ' / ' + goal;
+        $('m-week-go').textContent = weekDone ? '✓' : '›';
+        $('m-week-sub').textContent = weekDone ? 'クリア！' : 'あと ' + fmt(goal - weekTotal) + ' コマ';
+        $('m-week-sub').className = 'mission__sub' + (weekDone ? ' is-clear' : '');
+
+        var dp = Math.min(100, todayK / perDay * 100), dayDone = todayK >= perDay - 1e-9;
+        $('m-day').style.setProperty('--p', dp + '%');
+        $('m-day').classList.toggle('is-clear', dayDone);
+        $('m-day-txt').textContent = '今日のコマ ' + fmt(todayK) + ' / ' + fmt(perDay);
+        $('m-day-go').textContent = dayDone ? '✓' : '›';
+        $('m-day-sub').textContent = dayDone ? 'クリア！' : 'あと ' + fmt(perDay - todayK) + ' コマ';
+        $('m-day-sub').className = 'mission__sub' + (dayDone ? ' is-clear' : '');
+
+        var dots = $('koma-dots'); dots.innerHTML = '';
+        for (var d = 0; d < Math.min(perDayShow, 12); d++) {
+            var i2 = document.createElement('i');
+            if (todayK >= d + 1) i2.className = 'is-on';
+            else if (todayK > d) i2.className = 'is-half';
+            dots.appendChild(i2);
+        }
+
+        // ---- 日ごとの札 ----
+        var days = $('days'); days.innerHTML = '';
+        var set = WORK_SETS[n];
+        for (var j = 0; j < n; j++) {
+            var dv = document.createElement('div');
+            var isPast = j < todayIx;
+            dv.className = 'day' + (ok[j] ? ' is-ok' : (isPast ? ' is-miss' : '')) + (j === todayIx ? ' is-today' : '');
+            dv.innerHTML = DAY_NAMES[set[j]] + '<b>' + fmt(ko[j]) + '</b>' + (ok[j] ? '達成' : (isPast ? '未達' : (j === todayIx ? '今日' : '—')));
+            days.appendChild(dv);
+        }
+    }
+
+    function syncToday() {
+        var n = +$('c-days').value, cur = +$('c-today').value || 0, sel = $('c-today');
+        sel.innerHTML = '';
+        for (var i = 0; i < n; i++) { var o = document.createElement('option'); o.value = i; o.textContent = (i + 1) + '日目'; sel.appendChild(o); }
+        sel.value = Math.min(cur, n - 1) > 0 ? Math.min(cur, n - 1) : Math.min(2, n - 1);
+    }
+
+    $('c-days').addEventListener('change', function () { syncToday(); draw(); });
+    ['c-stage', 'c-goal', 'c-today', 'c-koma', 'c-past'].forEach(function (id) { $(id).addEventListener('input', draw); $(id).addEventListener('change', draw); });
+    $('c-theme').addEventListener('change', function () { document.documentElement.setAttribute('data-theme', this.value); });
+
+    syncToday();
+    draw();
+})();
+</script>
+</body>
+</html>

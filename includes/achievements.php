@@ -23,6 +23,7 @@ const ACH_LOOKS = [
     'hyper'    => ['shape' => 'sun',    'c' => ['#b28dff', '#4b2a8f'], 'icon' => '🚀'],
     'limit'    => ['shape' => 'sun',    'c' => ['#ff4f8b', '#8f1240'], 'icon' => '💥'],
     'week30'   => ['shape' => 'shield', 'c' => ['#6bc5ff', '#1f5f8f'], 'icon' => '📅'],
+    'stage'    => ['shape' => 'shield', 'c' => ['#f59ac8', '#9a2f6b'], 'icon' => '🌸'],
     'month120' => ['shape' => 'shield', 'c' => ['#b28dff', '#4b2a8f'], 'icon' => '🌙'],
     'perfect'  => ['shape' => 'shield', 'c' => ['#7be0a4', '#1f7a4a'], 'icon' => '🗓'],
     'total'    => ['shape' => 'gem',    'c' => ['#80deea', '#00838f'], 'icon' => '💎'],
@@ -103,9 +104,15 @@ function achievements_build(array $daily, string $today): array {
         $months[substr($ymd, 0, 7)] = ($months[substr($ymd, 0, 7)] ?? 0) + $v;
         $weekDays[$w][] = $v;
     }
-    $weekCount = $monthCount = $perfectCount = 0;
+    $weekCount = $monthCount = $perfectCount = $stageCount = 0;
+    $config   = load_config();
+    $stGoal   = koma_week_goal($config['week_goal'] ?? null);
+    $stOff    = koma_week_off_days($config['week_off_days'] ?? null);
+    $stCal    = koma_calendar_load();
     foreach ($weeks as $w => $sum) {
         if ($sum >= ACH_WEEK_GOAL) { $weekCount++; $events["week30:$w"] = 'week30'; }
+        // ステージクリア（#T-015）: その週の全稼働日で1日の目標を達成。今週は稼働日が全部終わってから
+        if (koma_week_cleared($daily, $w, $stGoal, $stOff, $stCal)) { $stageCount++; $events["stage:$w"] = 'stage'; }
         // 皆勤: 日〜土の7日すべて1コマ以上（今週は土曜まで終わってから）
         if (count($weekDays[$w]) === 7 && min($weekDays[$w]) >= 1) { $perfectCount++; $events["perfect:$w"] = 'perfect'; }
     }
@@ -119,10 +126,14 @@ function achievements_build(array $daily, string $today): array {
     $perfectAlive = !$pastOfWeek || min($pastOfWeek) >= 1;
     $perfectDone  = count(array_filter($thisWeek, fn($v) => $v >= 1));
 
+    $stageDone = koma_week_cleared($daily, $curWeek, $stGoal, $stOff, $stCal);
     $periodItems = [
         ['key' => 'week30', 'count' => $weekCount,
          'tip' => "<b>ウィークリー30</b><br><span class=\"tip__dim\">日〜土で30コマ</span><br>これまで {$weekCount}回<div class=\"tip__next\">"
             . ($weekKoma >= ACH_WEEK_GOAL ? '今週は獲得済み' : '今週 ' . ach_fmt($weekKoma) . ' コマ・あと <b>' . ach_fmt(ACH_WEEK_GOAL - $weekKoma) . '</b> コマ（土曜 24:00 まで）') . '</div>'],
+        ['key' => 'stage', 'count' => $stageCount,
+         'tip' => "<b>ステージクリア</b><br><span class=\"tip__dim\">今週の稼働日すべてで1日の目標を達成</span><br>これまで {$stageCount}回<div class=\"tip__next\">"
+            . ($stageDone ? '今週は獲得済み' : '今週のステージ表示で進み具合を確認') . '</div>'],
         ['key' => 'month120', 'count' => $monthCount,
          'tip' => "<b>マンスリー120</b><br><span class=\"tip__dim\">1か月で120コマ</span><br>これまで {$monthCount}回<div class=\"tip__next\">"
             . ($monthKoma >= ACH_MONTH_GOAL ? '今月は獲得済み' : '今月 ' . ach_fmt($monthKoma) . ' コマ・あと <b>' . ach_fmt(ACH_MONTH_GOAL - $monthKoma) . '</b> コマ（月末まで）') . '</div>'],
@@ -261,7 +272,7 @@ function ach_open_all(array $events, string $user_id = CURRENT_USER_ID): array {
 
 const ACH_NAMES = [
     'full' => 'フルデイ', 'od' => 'オーバードライブ', 'hyper' => 'ハイパードライブ', 'limit' => 'リミットブレイク',
-    'week30' => 'ウィークリー30', 'month120' => 'マンスリー120', 'perfect' => '皆勤',
+    'week30' => 'ウィークリー30', 'stage' => 'ステージクリア', 'month120' => 'マンスリー120', 'perfect' => '皆勤',
     'total' => '累計コマ', 'hours' => '累計時間', 'proj' => '職人',
     'streak7' => '7日連続', 'streak30' => '30日連続', 'full3' => 'フルデイ3連',
 ];

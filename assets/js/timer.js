@@ -816,6 +816,7 @@ function updateSummary() {
     renderProgress(today);
     renderInfo(today);
     renderWeek(today);
+    renderStage(today);
 }
 
 // 週の状況（#T-011）。材料は includes/koma_stats.php の koma_week_status()（CFG.homeStats.week）。
@@ -862,6 +863,147 @@ function renderWeek(today) {
               + `<div class="week-stat__note">昨日までの目標 ${fmt1(s.target)} コマ（1日 ${fmt1(w.perDay)} × 稼働 ${w.elapsedWorkDays}日）</div>`
               + (need ? `<div class="week-stat__note">${need}</div>` : ''));
     if (html !== _weekHtml) el.innerHTML = _weekHtml = html;
+}
+
+// ステージ表示（#T-015）。材料は koma_week_status() の days（日ごとの休み・コマ数。今日より前だけ）と perDay。
+// 道を今週の稼働日の数で等分し、日ごとに1日の目標（perDay）以上で達成。全稼働日が達成でステージクリア。
+// 達成の規則は PHP の koma_week_cleared()（実績「ステージクリア」）と同じなので、変えるときは両方直す。
+let _stageHtml = '';
+const STAGE = { cx: 160, cy: 98, rx: 98, ry: 49, a0: Math.PI };
+
+function stageRng(seed) {  // mulberry32（花の位置をステージごとに固定する）
+    return () => {
+        seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+        let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+}
+function stagePt(theta, dr = 0) {
+    const S = STAGE;
+    return [S.cx + (S.rx + dr) * Math.cos(theta), S.cy + (S.ry + dr * S.ry / S.rx) * Math.sin(theta)];
+}
+function stageArc(t0, t1) {
+    const steps = Math.max(2, Math.ceil((t1 - t0) / 0.08));
+    let d = '';
+    for (let i = 0; i <= steps; i++) {
+        const p = stagePt(t0 + (t1 - t0) * i / steps);
+        d += `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+    }
+    return d;
+}
+
+function stageArtSvg(w, work, koma, ok, cleared, curIx, label) {
+    const S = STAGE, n = work.length, perDay = w.perDay;
+    const rs = stageRng(w.stage * 7 + 3);
+    let g = '';
+    for (let i = 0; i < 22; i++) g += `<circle cx="${(rs() * 320).toFixed(1)}" cy="${(rs() * 80).toFixed(1)}" r="${(rs() * 1.1 + .3).toFixed(1)}" fill="#fff" opacity="${(rs() * .5 + .25).toFixed(2)}"/>`;
+    const tile = 'points="160,28 304,103 160,178 16,103" stroke-width="10" stroke-linejoin="round"';
+    g += `<polygon ${tile} fill="#2f6f2c" stroke="#2f6f2c" transform="translate(0 14)"/>`
+       + `<polygon ${tile} fill="#6fcf4f" stroke="#6fcf4f"/>`
+       + `<polygon points="160,34 292,103 160,172 28,103" fill="#7bd957" opacity=".55"/>`
+       + `<ellipse cx="${S.cx}" cy="${S.cy}" rx="${S.rx}" ry="${S.ry}" fill="none" stroke="#4fa23a" stroke-width="20" opacity=".75"/>`
+       + `<ellipse cx="${S.cx}" cy="${S.cy}" rx="${S.rx - 38}" ry="${S.ry - 19}" fill="#3f8a31" opacity=".8"/>`;
+
+    const step = Math.PI * 2 / n, gap = n > 1 ? 0.045 : 0;
+    let charPt = null;
+    for (let i = 0; i < n; i++) {
+        const t0 = S.a0 + step * i + gap, t1 = S.a0 + step * (i + 1) - gap;
+        const prog = Math.max(0, Math.min(1, koma[i] / perDay));
+        const tEnd = t0 + (t1 - t0) * prog;
+        if (i === curIx) g += `<path d="${stageArc(t0, t1)}" fill="none" stroke="#fff" stroke-width="24" stroke-linecap="round" opacity=".28"/>`;
+        g += `<path d="${stageArc(t0, t1)}" fill="none" stroke="${ok[i] ? '#9a5a97' : '#3c8a30'}" stroke-width="18" stroke-linecap="round" opacity="${ok[i] ? .55 : .7}"/>`;
+        const r = stageRng(w.stage * 131 + i * 17 + 5);
+        const count = Math.round(34 * prog);
+        for (let f = 0; f < count; f++) {
+            const tt = t0 + (tEnd - t0) * (f + r()) / Math.max(1, count);
+            const p = stagePt(tt, (r() - .5) * 15);
+            const hue = (ok[i] ? [318, 330, 300] : [330, 345, 310])[f % 3];
+            g += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${(2 + r() * 1.3).toFixed(1)}" fill="hsl(${hue} 80% ${(58 + r() * 14).toFixed(0)}%)"/>`;
+            if (f % 5 === 0) g += `<circle cx="${p[0].toFixed(1)}" cy="${(p[1] - .2).toFixed(1)}" r=".9" fill="#fff6c8"/>`;
+        }
+        if (i === curIx) charPt = stagePt(tEnd);
+    }
+    // 今日が休みなら次の稼働日の始まり、稼働日がもう残っていなければ道の終わりにキャラクターを置く
+    if (!charPt) charPt = stagePt(curIx >= n ? S.a0 + Math.PI * 2 - gap : S.a0 + step * curIx + gap);
+
+    // 中央の芽（クリアで開花）と、報酬の吹き出し
+    const sx = S.cx, sy = S.cy + 4;
+    g += `<ellipse cx="${sx}" cy="${sy + 2}" rx="17" ry="7" fill="#2d6a28"/><ellipse cx="${sx - 7}" cy="${sy}" rx="6" ry="3" fill="#bda88a"/><ellipse cx="${sx + 6}" cy="${sy + 1}" rx="5" ry="2.6" fill="#a99476"/>`;
+    if (!cleared) {
+        g += `<path d="M${sx} ${sy}C${sx - 2} ${sy - 22} ${sx + 1} ${sy - 40} ${sx} ${sy - 52}" stroke="#b9dc8c" stroke-width="5" fill="none" stroke-linecap="round"/><ellipse cx="${sx}" cy="${sy - 56}" rx="11" ry="7" fill="#cfe8a1"/>`;
+    } else {
+        g += `<path d="M${sx} ${sy}C${sx - 2} ${sy - 22} ${sx + 1} ${sy - 34} ${sx} ${sy - 44}" stroke="#8fd070" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+        for (let k = 0; k < 8; k++) {
+            const an = k * Math.PI / 4, px = (sx + 10 * Math.cos(an)).toFixed(1), py = (sy - 52 + 7 * Math.sin(an)).toFixed(1);
+            g += `<ellipse cx="${px}" cy="${py}" rx="7" ry="4.5" transform="rotate(${an * 180 / Math.PI} ${px} ${py})" fill="#ffd0e8"/>`;
+        }
+        g += `<circle cx="${sx}" cy="${sy - 52}" r="6" fill="#ffd54a"/>`;
+    }
+    const bx = sx + 34, by = sy - 62;
+    g += `<circle cx="${bx}" cy="${by}" r="15" fill="#e9f3f1" stroke="#fff" stroke-width="2"/><path d="M${bx - 8} ${by + 12}L${bx - 14} ${by + 21}L${bx - 1} ${by + 15}Z" fill="#e9f3f1"/>`
+       + `<g opacity="${cleared ? 1 : .55}"><circle cx="${bx}" cy="${by}" r="8.5" fill="${cleared ? '#ffc933' : '#b8a874'}"/>`
+       + `<path d="M${bx} ${by - 5}L${bx + 1.7} ${by - 1.5}L${bx + 5.4} ${by - 1}L${bx + 2.7} ${by + 1.6}L${bx + 3.4} ${by + 5.2}L${bx} ${by + 3.4}L${bx - 3.4} ${by + 5.2}L${bx - 2.7} ${by + 1.6}L${bx - 5.4} ${by - 1}L${bx - 1.7} ${by - 1.5}Z" fill="#fff6d2"/></g>`;
+    // キャラクター（仮画像。足元が道の上に来るように置く）
+    g += `<image href="/assets/img/stage-char.svg" x="${(charPt[0] - 22).toFixed(1)}" y="${(charPt[1] - 50).toFixed(1)}" width="44" height="56"/>`;
+    return `<svg viewBox="0 0 320 230" role="img" aria-label="${label}">${g}</svg>`;
+}
+
+function renderStage(today) {
+    const root = document.getElementById('stage-panel');
+    const w    = CFG.homeStats?.week;
+    if (!root || !w) return;
+    const work = w.days.filter(d => !d.off);
+    const n    = work.length;
+    const md   = (date) => { const [, m, d] = date.split('-').map(Number); return `${m}/${d}`; };
+    const head = `<div class="stage-head"><h2 class="stage-title">ステージ ${w.stage}</h2><span class="stage-range">${md(w.weekStart)} – ${md(w.days[6].date)}</span></div>`;
+
+    let html;
+    if (n === 0) {
+        html = head + `<div class="stage-off">今週は稼働日がないので、ステージはお休みです</div>`;
+    } else {
+        const perDay  = w.perDay;
+        const koma    = work.map(d => d.date === CFG.today ? today : (d.date < CFG.today ? d.koma : 0));
+        const ok      = koma.map(k => k >= perDay - 1e-9);
+        const cleared = ok.every(Boolean);
+        const todayIx = work.findIndex(d => d.date === CFG.today);
+        const nextIx  = work.findIndex(d => d.date > CFG.today);
+        const curIx   = todayIx >= 0 ? todayIx : (nextIx >= 0 ? nextIx : n);
+        const label   = `ステージ${w.stage}。稼働日${n}日のうち${ok.filter(Boolean).length}日達成${cleared ? '。ステージクリア' : ''}`;
+        const week    = weekStatus(w, today);
+        const weekDone = week.rest <= 0;
+
+        const mission = (icon, text, p, done) =>
+            `<div class="stage-mission${done ? ' is-clear' : ''}"><div class="stage-mission__fill" style="width:${Math.min(100, p * 100)}%"></div>`
+            + icon + `<span class="stage-mission__txt">${text}</span><span class="stage-mission__go">${done ? '✓' : '›'}</span></div>`;
+        const sub = (done, rest) => `<div class="stage-sub${done ? ' is-clear' : ''}">${done ? 'クリア！' : `あと ${fmt1(rest)} コマ`}</div>`;
+        const iconWeek = `<svg class="stage-mission__ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3" fill="#fff"/><g fill="#fff"><circle cx="10" cy="3.2" r="2.4"/><circle cx="16.5" cy="8" r="2.4"/><circle cx="14" cy="15.6" r="2.4"/><circle cx="6" cy="15.6" r="2.4"/><circle cx="3.5" cy="8" r="2.4"/></g></svg>`;
+        const iconDay  = `<svg class="stage-mission__ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 10a8 7 0 0 1 16 0z" fill="#fff"/><rect x="7" y="10" width="6" height="7" rx="2" fill="#fff"/></svg>`;
+
+        let missions = mission(iconWeek, `今週のコマ ${fmt1(week.done)} / ${w.goal}`, week.done / w.goal, weekDone) + sub(weekDone, week.rest);
+        if (todayIx >= 0) {
+            const tk = koma[todayIx], dayDone = ok[todayIx];
+            let dots = '';
+            for (let i = 0; i < Math.min(Math.ceil(perDay - 1e-9), 12); i++) dots += `<i${tk >= i + 1 ? ' class="is-on"' : (tk > i ? ' class="is-half"' : '')}></i>`;
+            missions += mission(iconDay, `今日のコマ ${fmt1(tk)} / ${fmt1(perDay)}`, tk / perDay, dayDone) + sub(dayDone, perDay - tk)
+                + `<div class="stage-dots" aria-hidden="true">${dots}</div>`;
+        } else {
+            missions += `<div class="stage-sub">今日は休みの日です</div>`;
+        }
+
+        const NAMES = ['日', '月', '火', '水', '木', '金', '土'];
+        const days = work.map((d, i) => {
+            const [y, m, dd] = d.date.split('-').map(Number);
+            const past = d.date < CFG.today;
+            const cls = (ok[i] ? ' is-ok' : (past ? ' is-miss' : '')) + (i === todayIx ? ' is-today' : '');
+            return `<div class="stage-day${cls}">${NAMES[new Date(y, m - 1, dd).getDay()]}<b>${fmt1(koma[i])}</b>${ok[i] ? '達成' : (past ? '未達' : (i === todayIx ? '今日' : '—'))}</div>`;
+        }).join('');
+
+        html = head
+            + `<div class="stage-art${cleared ? ' is-cleared' : ''}"><span class="stage-art__badge">ステージクリア！</span>${stageArtSvg(w, work, koma, ok, cleared, curIx, label)}<span class="stage-art__no">ステージ${w.stage}</span></div>`
+            + `<div class="stage-missions">${missions}</div><div class="stage-days">${days}</div>`;
+    }
+    if (html !== _stageHtml) root.innerHTML = _stageHtml = html;
 }
 
 // お知らせ（#T-004）: 0時までの残り・次の今日の実績・ウィークリー30
